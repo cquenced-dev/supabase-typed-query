@@ -27,17 +27,6 @@ describe("Entity", () => {
 
       expect(UserEntity).toBeDefined()
     })
-
-    it("should create entity with partition key", () => {
-      const mockClient = createMockSupabaseClient()
-
-      const TenantEntity = Entity(mockClient, "posts", {
-        softDelete: true,
-        partitionKey: { tenant_id: "tenant-123" },
-      })
-
-      expect(TenantEntity).toBeDefined()
-    })
   })
 
   describe("getItem()", () => {
@@ -252,48 +241,6 @@ describe("Entity", () => {
       })
 
       expect(result).toBeDefined()
-    })
-  })
-
-  describe("Partition Key Integration", () => {
-    it("should automatically apply partition key to getItem", () => {
-      const fromSpy = vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        match: vi.fn().mockReturnThis(),
-        is: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: null }),
-      })
-
-      const mockClient = { from: fromSpy } as unknown as SupabaseClientType
-
-      const TenantEntity = Entity(mockClient, "posts", {
-        softDelete: true,
-        partitionKey: { tenant_id: "tenant-123" },
-      })
-
-      TenantEntity.getItem({ id: "post-1" }).one()
-
-      expect(fromSpy).toHaveBeenCalledWith("posts")
-    })
-
-    it("should automatically apply partition key to getItems", () => {
-      const fromSpy = vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        match: vi.fn().mockReturnThis(),
-        is: vi.fn().mockReturnThis(),
-        then: vi.fn().mockResolvedValue({ data: [], error: null }),
-      })
-
-      const mockClient = { from: fromSpy } as unknown as SupabaseClientType
-
-      const TenantEntity = Entity(mockClient, "posts", {
-        softDelete: true,
-        partitionKey: { tenant_id: "tenant-123" },
-      })
-
-      TenantEntity.getItems({ where: { status: "published" } }).many()
-
-      expect(fromSpy).toHaveBeenCalledWith("posts")
     })
   })
 

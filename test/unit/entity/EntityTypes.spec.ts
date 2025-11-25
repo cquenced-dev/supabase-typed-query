@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest"
 
-import type { EntityConfig, EntityType, IdParam, IEntity, TypedRecord, WhereParams } from "@/entity"
+import type {
+  EntityConfig,
+  EntityType,
+  IdParam,
+  IEntity,
+  IPartitionedEntity,
+  PartitionedEntityConfig,
+  PartitionKey,
+  TypedRecord,
+  WhereParams,
+} from "@/entity"
+
+import type { Brand } from "functype"
 
 describe("Entity Types", () => {
   it("should define proper entity type structure", () => {
@@ -77,19 +89,46 @@ describe("Entity Types", () => {
     expect(configInclude.softDelete).toBe(false)
   })
 
-  it("should support partition key in EntityConfig", () => {
-    const configWithPartition: EntityConfig = {
+  it("should type check PartitionedEntityConfig", () => {
+    const config: PartitionedEntityConfig = {
+      partitionField: "tenant_id",
       softDelete: true,
-      partitionKey: { tenant_id: "123" },
     }
 
-    const configWithoutPartition: EntityConfig = {
-      softDelete: false,
+    expect(config).toBeDefined()
+    expect(config.partitionField).toBe("tenant_id")
+    expect(config.softDelete).toBe(true)
+  })
+
+  it("should type check PartitionKey with branded types", () => {
+    // PartitionKey can be a string
+    const stringKey: PartitionKey = "tenant-123"
+    expect(stringKey).toBe("tenant-123")
+
+    // PartitionKey can also be a branded type
+    type TenantId = Brand<string, "TenantId">
+    const brandedKey: PartitionKey = "tenant-456" as TenantId
+    expect(brandedKey).toBe("tenant-456")
+  })
+
+  it("should type check IPartitionedEntity interface", () => {
+    type TestTable = "test_table"
+    type TenantId = Brand<string, "TenantId">
+
+    // IPartitionedEntity should have all required methods with partition key
+    const mockFn = (() => {}) as never
+
+    const partitionedEntity: IPartitionedEntity<TestTable, TenantId> = {
+      getItem: mockFn,
+      getItems: mockFn,
+      addItems: mockFn,
+      updateItem: mockFn,
+      updateItems: mockFn,
     }
 
-    expect(configWithPartition).toBeDefined()
-    expect(configWithPartition.partitionKey).toEqual({ tenant_id: "123" })
-    expect(configWithoutPartition.partitionKey).toBeUndefined()
+    expect(partitionedEntity).toBeDefined()
+    expect(partitionedEntity.getItem).toBeDefined()
+    expect(partitionedEntity.getItems).toBeDefined()
   })
 
   it("should type check IEntity interface", () => {

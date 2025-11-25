@@ -1,0 +1,101 @@
+/**
+ * PartitionedEntity - Entity with partition key required on every call
+ *
+ * Use this for multi-tenant or partitioned data where every query must be scoped
+ * to a specific partition (e.g., tenant_id, organization_id, etc.)
+ *
+ * Supports branded types via functype's Brand/ValidatedBrand for type-safe partition keys.
+ *
+ * @example
+ * ```typescript
+ * import { ValidatedBrand } from "functype"
+ *
+ * // Define a branded partition key type
+ * const TenantId = ValidatedBrand("TenantId", isValidUuid)
+ * type TenantId = ReturnType<typeof TenantId.of> extends Option<infer T> ? T : never
+ *
+ * // Create a partitioned entity
+ * const UserEntity = PartitionedEntity<"users", TenantId>(client, "users", {
+ *   partitionField: "tenant_id",
+ *   softDelete: true
+ * })
+ *
+ * // All queries require the partition key
+ * const users = await UserEntity.getItems(tenantId, { where: { status: "active" } }).many()
+ * const user = await UserEntity.getItem(tenantId, { id: "123" }).one()
+ * ```
+ */
+
+import type { SupabaseClientType, TableNames } from "@/types"
+
+import {
+  getSoftDeleteMode,
+  makeAddItems,
+  makePartitionedGetItem,
+  makePartitionedGetItems,
+  makePartitionedUpdateItem,
+  makePartitionedUpdateItems,
+} from "./core"
+import type { IPartitionedEntity, PartitionedEntityConfig, PartitionKey } from "./types"
+
+/**
+ * Creates a partitioned entity interface where all queries require a partition key.
+ *
+ * @param client The Supabase client instance to use for queries.
+ * @param name The name of the table to interact with.
+ * @param config Configuration including partition field and soft delete behavior.
+ * @returns An object with methods for interacting with the partitioned table.
+ *
+ * @typeParam T - The table name type
+ * @typeParam K - The partition key type (string or branded type)
+ */
+export const PartitionedEntity = <T extends TableNames, K extends PartitionKey = string>(
+  client: SupabaseClientType,
+  name: T,
+  config: PartitionedEntityConfig,
+): IPartitionedEntity<T, K> => {
+  const softDeleteMode = getSoftDeleteMode(config.softDelete)
+  const { partitionField } = config
+
+  return {
+    /**
+     * Retrieve a single item from the table by ID within a partition.
+     * @param partitionKey The partition key value (e.g., tenantId)
+     * @param params Query parameters including id, where conditions, and is conditions
+     * @returns A chainable query that can be executed with .one(), .many(), or .first()
+     */
+    getItem: makePartitionedGetItem<T, K>(client, name, partitionField, softDeleteMode),
+
+    /**
+     * Get a list of items from the table within a partition.
+     * @param partitionKey The partition key value (e.g., tenantId)
+     * @param params Optional query parameters including where, is, wherein, and order
+     * @returns A chainable query that can be executed with .one(), .many(), or .first()
+     */
+    getItems: makePartitionedGetItems<T, K>(client, name, partitionField, softDeleteMode),
+
+    /**
+     * Adds multiple items to the table.
+     * Note: Items should include the partition key value in their data.
+     * @param params Parameters including items array
+     * @returns A mutation query with OrThrow methods
+     */
+    addItems: makeAddItems(client, name),
+
+    /**
+     * Update a single item in the table within a partition.
+     * @param partitionKey The partition key value (e.g., tenantId)
+     * @param params Update parameters including id, item data, and optional filters
+     * @returns A mutation query with OrThrow methods
+     */
+    updateItem: makePartitionedUpdateItem<T, K>(client, name, partitionField),
+
+    /**
+     * Update multiple items in the table within a partition.
+     * @param partitionKey The partition key value (e.g., tenantId)
+     * @param params Update parameters including items array, identity, and optional filters
+     * @returns A mutation query with OrThrow methods
+     */
+    updateItems: makePartitionedUpdateItems<T, K>(client, name, partitionField),
+  }
+}

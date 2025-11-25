@@ -1,3 +1,4 @@
+// Entity exports
 export type {
   AddItemsParams,
   EntityConfig,
@@ -17,3 +18,7 @@ export type {
   WhereParams,
 } from "./Entity"
 export { Entity, MultiMutationQuery, SingleMutationQuery } from "./Entity"
+
+// PartitionedEntity exports
+export { PartitionedEntity } from "./PartitionedEntity"
+export type { IPartitionedEntity, PartitionedEntityConfig, PartitionKey } from "./types"

@@ -54,17 +54,20 @@ export type {
   GetItemsParams,
   IdParam,
   IEntity,
+  IPartitionedEntity,
   IsParams,
   MutationMultiExecution,
   MutationSingleExecution,
   OrderParams,
+  PartitionedEntityConfig,
+  PartitionKey,
   TypedRecord,
   UpdateItemParams,
   UpdateItemsParams,
   WhereinParams,
   WhereParams,
 } from "./entity"
-export { Entity, MultiMutationQuery, SingleMutationQuery } from "./entity"
+export { Entity, MultiMutationQuery, PartitionedEntity, SingleMutationQuery } from "./entity"
 
 // Re-export functype utilities that are commonly used with this library
 export type { FPromise, TaskOutcome } from "functype"
