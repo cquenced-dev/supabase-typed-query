@@ -25,6 +25,7 @@ describe("Entity Types", () => {
       addItems: expect.any(Function) as never,
       updateItem: expect.any(Function) as never,
       updateItems: expect.any(Function) as never,
+      upsertItems: expect.any(Function) as never,
     }
 
     expect(entityType).toBeDefined()
@@ -124,6 +125,7 @@ describe("Entity Types", () => {
       addItems: mockFn,
       updateItem: mockFn,
       updateItems: mockFn,
+      upsertItems: mockFn,
     }
 
     expect(partitionedEntity).toBeDefined()
@@ -143,6 +145,7 @@ describe("Entity Types", () => {
       addItems: mockFn,
       updateItem: mockFn,
       updateItems: mockFn,
+      upsertItems: mockFn,
     }
 
     expect(entityInterface).toBeDefined()

@@ -19,7 +19,15 @@
 
 import type { SupabaseClientType, TableNames } from "@/types"
 
-import { getSoftDeleteMode, makeAddItems, makeGetItem, makeGetItems, makeUpdateItem, makeUpdateItems } from "./core"
+import {
+  getSoftDeleteMode,
+  makeAddItems,
+  makeGetItem,
+  makeGetItems,
+  makeUpdateItem,
+  makeUpdateItems,
+  makeUpsertItems,
+} from "./core"
 import type { EntityConfig, IEntity } from "./types"
 
 // Re-export types for backwards compatibility
@@ -38,6 +46,7 @@ export type {
   TypedRecord,
   UpdateItemParams,
   UpdateItemsParams,
+  UpsertItemsParams,
   WhereinParams,
   WhereParams,
 } from "./types"
@@ -91,5 +100,12 @@ export const Entity = <T extends TableNames>(client: SupabaseClientType, name: T
      * @returns A mutation query with OrThrow methods
      */
     updateItems: makeUpdateItems(client, name),
+
+    /**
+     * Upsert multiple items with different data per row.
+     * @param params Upsert parameters including items array and identity columns
+     * @returns A mutation query with OrThrow methods
+     */
+    upsertItems: makeUpsertItems(client, name),
   }
 }

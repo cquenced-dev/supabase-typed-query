@@ -2,7 +2,7 @@
  * Shared internal functions for Entity and PartitionedEntity (DRY)
  */
 
-import { addEntities, updateEntities, updateEntity } from "@/query"
+import { addEntities, updateEntity, upsertEntities } from "@/query"
 import type { WhereConditions } from "@/query/Query"
 import { createQuery } from "@/query/QueryBuilder"
 import type { SupabaseClientType, TableNames, TableRow, TableUpdate } from "@/types"
@@ -19,6 +19,7 @@ import type {
   TypedRecord,
   UpdateItemParams,
   UpdateItemsParams,
+  UpsertItemsParams,
   WhereinParams,
 } from "./types"
 import { MultiMutationQuery, SingleMutationQuery } from "./types"
@@ -142,9 +143,25 @@ export function createUpdateItemsMutation<T extends TableNames>(
   is: IsParams<TableRow<T>>["is"],
   wherein: WhereinParams<TableRow<T>>["wherein"],
 ): MutationMultiExecution<TableRow<T>> {
-  // Use updateEntities with single-item array - updates all matching rows with same data
+  // Use upsertEntities with single-item array - updates all matching rows with same data
   return MultiMutationQuery(
-    updateEntities(client, name, [data], undefined, where, is, wherein) as FPromise<TaskOutcome<List<TableRow<T>>>>,
+    upsertEntities(client, name, [data], undefined, where, is, wherein) as FPromise<TaskOutcome<List<TableRow<T>>>>,
+  )
+}
+
+/**
+ * Creates an upsertItems mutation (batch upsert: each item gets its own data)
+ */
+export function createUpsertItemsMutation<T extends TableNames>(
+  client: SupabaseClientType,
+  name: T,
+  items: TableUpdate<T>[],
+  identity: (keyof TableRow<T> & string) | (keyof TableRow<T> & string)[],
+): MutationMultiExecution<TableRow<T>> {
+  return MultiMutationQuery(
+    upsertEntities(client, name, items, identity, undefined, undefined, undefined) as FPromise<
+      TaskOutcome<List<TableRow<T>>>
+    >,
   )
 }
 
@@ -265,5 +282,35 @@ export function makePartitionedUpdateItems<T extends TableNames, K extends Parti
 export function makeAddItems<T extends TableNames>(client: SupabaseClientType, name: T) {
   return function addItems({ items }: { items: TableRow<T>[] }) {
     return createAddItemsMutation(client, name, items)
+  }
+}
+
+/**
+ * Creates upsertItems method for Entity (no partition) - batch upsert with identity
+ */
+export function makeUpsertItems<T extends TableNames>(client: SupabaseClientType, name: T) {
+  return function upsertItems({
+    items,
+    identity = "id" as keyof TableRow<T> & string,
+  }: UpsertItemsParams<T, TableRow<T>>) {
+    return createUpsertItemsMutation(client, name, items, identity)
+  }
+}
+
+/**
+ * Creates upsertItems method for PartitionedEntity - batch upsert with identity
+ */
+export function makePartitionedUpsertItems<T extends TableNames, K extends PartitionKey>(
+  client: SupabaseClientType,
+  name: T,
+  _partitionField: string,
+) {
+  return function upsertItems(
+    _partitionKey: K,
+    { items, identity = "id" as keyof TableRow<T> & string }: UpsertItemsParams<T, TableRow<T>>,
+  ) {
+    // Note: partitionKey is passed but items should already contain the partition field value
+    // This maintains API consistency with other partitioned methods
+    return createUpsertItemsMutation(client, name, items, identity)
   }
 }

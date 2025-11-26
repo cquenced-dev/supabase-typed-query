@@ -348,6 +348,62 @@ describe("PartitionedEntity", () => {
     })
   })
 
+  describe("upsertItems()", () => {
+    it("should return a mutation multi execution interface with batch upsert", () => {
+      const mockClient = createMockSupabaseClient()
+      const UserEntity = PartitionedEntity<"users", TenantId>(mockClient, "users", {
+        partitionField: "tenant_id",
+        softDelete: true,
+      })
+
+      const tenantId = TenantIdOf("tenant-123")
+      const result = UserEntity.upsertItems(tenantId, {
+        items: [
+          { id: "1", name: "User 1", tenant_id: "tenant-123" },
+          { id: "2", name: "User 2", tenant_id: "tenant-123" },
+        ],
+      })
+
+      expect(result).toBeDefined()
+      expect(typeof result.many).toBe("function")
+      expect(typeof result.manyOrThrow).toBe("function")
+      expect(typeof result.execute).toBe("function")
+      expect(typeof result.executeOrThrow).toBe("function")
+    })
+
+    it("should accept custom identity column", () => {
+      const mockClient = createMockSupabaseClient()
+      const UserEntity = PartitionedEntity<"users", TenantId>(mockClient, "users", {
+        partitionField: "tenant_id",
+        softDelete: true,
+      })
+
+      const tenantId = TenantIdOf("tenant-123")
+      const result = UserEntity.upsertItems(tenantId, {
+        items: [{ email: "user1@example.com", name: "User 1", tenant_id: "tenant-123" }],
+        identity: "email",
+      })
+
+      expect(result).toBeDefined()
+    })
+
+    it("should accept composite identity columns", () => {
+      const mockClient = createMockSupabaseClient()
+      const UserEntity = PartitionedEntity<"users", TenantId>(mockClient, "users", {
+        partitionField: "tenant_id",
+        softDelete: true,
+      })
+
+      const tenantId = TenantIdOf("tenant-123")
+      const result = UserEntity.upsertItems(tenantId, {
+        items: [{ tenant_id: "tenant-123", user_id: "u1", name: "User 1" }],
+        identity: ["tenant_id", "user_id"],
+      })
+
+      expect(result).toBeDefined()
+    })
+  })
+
   describe("Partition Key Integration", () => {
     it("should automatically apply partition key to getItem query", () => {
       const matchSpy = vi.fn().mockReturnThis()

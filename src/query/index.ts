@@ -206,18 +206,19 @@ export const updateEntity = <T extends TableNames>(
   })
 
 /**
- * Updates multiple entities in the specified table.
+ * Upserts multiple entities in the specified table (insert or update on conflict).
+ * Uses Supabase's upsert() under the hood with onConflict resolution.
  * @template T - The table name
  * @param client - The Supabase client instance
- * @param table - The table to update
- * @param entities - The entities to update
- * @param identity - The column(s) to use as the identity
- * @param where - Conditions to filter by
+ * @param table - The table to upsert into
+ * @param entities - The entities to upsert
+ * @param identity - The column(s) to use for conflict resolution (default: "id")
+ * @param where - Additional conditions to filter by
  * @param is - IS conditions to filter by
  * @param wherein - WHERE IN conditions to filter by
- * @returns A promise resolving to the updated entities
+ * @returns A promise resolving to the upserted entities
  */
-export const updateEntities = <T extends TableNames>(
+export const upsertEntities = <T extends TableNames>(
   client: SupabaseClientType,
   table: T,
   entities: TableUpdate<T>[],

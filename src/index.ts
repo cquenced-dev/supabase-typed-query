@@ -41,8 +41,8 @@ export {
   isMappedQuery,
   isQuery,
   query,
-  updateEntities,
   updateEntity,
+  upsertEntities,
 } from "./query"
 
 // Entity exports
@@ -64,6 +64,7 @@ export type {
   TypedRecord,
   UpdateItemParams,
   UpdateItemsParams,
+  UpsertItemsParams,
   WhereinParams,
   WhereParams,
 } from "./entity"

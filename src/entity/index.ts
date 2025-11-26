@@ -14,6 +14,7 @@ export type {
   TypedRecord,
   UpdateItemParams,
   UpdateItemsParams,
+  UpsertItemsParams,
   WhereinParams,
   WhereParams,
 } from "./Entity"

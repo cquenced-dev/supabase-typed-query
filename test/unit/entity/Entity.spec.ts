@@ -259,6 +259,50 @@ describe("Entity", () => {
     })
   })
 
+  describe("upsertItems()", () => {
+    it("should return a mutation multi execution interface with batch upsert", () => {
+      const mockClient = createMockSupabaseClient()
+      const UserEntity = Entity(mockClient, "users", { softDelete: true })
+
+      const result = UserEntity.upsertItems({
+        items: [
+          { id: "1", name: "User 1" },
+          { id: "2", name: "User 2" },
+        ],
+      })
+
+      expect(result).toBeDefined()
+      expect(typeof result.many).toBe("function")
+      expect(typeof result.manyOrThrow).toBe("function")
+      expect(typeof result.execute).toBe("function")
+      expect(typeof result.executeOrThrow).toBe("function")
+    })
+
+    it("should accept custom identity column", () => {
+      const mockClient = createMockSupabaseClient()
+      const UserEntity = Entity(mockClient, "users", { softDelete: true })
+
+      const result = UserEntity.upsertItems({
+        items: [{ email: "user1@example.com", name: "User 1" }],
+        identity: "email",
+      })
+
+      expect(result).toBeDefined()
+    })
+
+    it("should accept composite identity columns", () => {
+      const mockClient = createMockSupabaseClient()
+      const UserEntity = Entity(mockClient, "users", { softDelete: true })
+
+      const result = UserEntity.upsertItems({
+        items: [{ tenant_id: "t1", user_id: "u1", name: "User 1" }],
+        identity: ["tenant_id", "user_id"],
+      })
+
+      expect(result).toBeDefined()
+    })
+  })
+
   describe("Soft Delete Behavior", () => {
     it("should exclude deleted items when softDelete is true", () => {
       const mockClient = createMockSupabaseClient()

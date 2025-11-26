@@ -110,6 +110,16 @@ export type UpdateItemsParams<T extends TableNames, Row extends object = EmptyOb
 } & IsParams<Row> &
   WhereinParams<Row>
 
+/**
+ * Batch upsert params: update multiple rows with different data per row
+ */
+export type UpsertItemsParams<T extends TableNames, Row extends object = EmptyObject> = {
+  /** Array of items to upsert, each with its own data */
+  items: TableUpdate<T>[]
+  /** Column(s) to use as identity for matching (default: "id") */
+  identity?: (keyof Row & string) | (keyof Row & string)[]
+}
+
 // =============================================================================
 // Mutation Query Wrappers
 // =============================================================================
@@ -176,6 +186,7 @@ export type IEntity<T extends TableNames> = {
   addItems(params: AddItemsParams<T>): MutationMultiExecution<TableRow<T>>
   updateItem(params: UpdateItemParams<T, TableRow<T>>): MutationSingleExecution<TableRow<T>>
   updateItems(params: UpdateItemsParams<T, TableRow<T>>): MutationMultiExecution<TableRow<T>>
+  upsertItems(params: UpsertItemsParams<T, TableRow<T>>): MutationMultiExecution<TableRow<T>>
 }
 
 /**
@@ -187,6 +198,7 @@ export type IPartitionedEntity<T extends TableNames, K extends PartitionKey> = {
   addItems(params: AddItemsParams<T>): MutationMultiExecution<TableRow<T>>
   updateItem(partitionKey: K, params: UpdateItemParams<T, TableRow<T>>): MutationSingleExecution<TableRow<T>>
   updateItems(partitionKey: K, params: UpdateItemsParams<T, TableRow<T>>): MutationMultiExecution<TableRow<T>>
+  upsertItems(partitionKey: K, params: UpsertItemsParams<T, TableRow<T>>): MutationMultiExecution<TableRow<T>>
 }
 
 /**

@@ -35,6 +35,7 @@ import {
   makePartitionedGetItems,
   makePartitionedUpdateItem,
   makePartitionedUpdateItems,
+  makePartitionedUpsertItems,
 } from "./core"
 import type { IPartitionedEntity, PartitionedEntityConfig, PartitionKey } from "./types"
 
@@ -97,5 +98,14 @@ export const PartitionedEntity = <T extends TableNames, K extends PartitionKey =
      * @returns A mutation query with OrThrow methods
      */
     updateItems: makePartitionedUpdateItems<T, K>(client, name, partitionField),
+
+    /**
+     * Upsert multiple items with different data per row within a partition.
+     * Note: Items should include the partition key value in their data.
+     * @param partitionKey The partition key value (e.g., tenantId)
+     * @param params Upsert parameters including items array and identity columns
+     * @returns A mutation query with OrThrow methods
+     */
+    upsertItems: makePartitionedUpsertItems<T, K>(client, name, partitionField),
   }
 }
