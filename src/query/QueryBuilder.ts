@@ -1,4 +1,4 @@
-import type { SupabaseClientType, TableNames, TableRow } from "@/types"
+import type { Database, DatabaseSchema, SupabaseClientType, TableNames, TableRow } from "@/types"
 import { toError } from "@/utils/errors"
 
 import type { Brand, FPromise, TaskOutcome } from "functype"
@@ -28,10 +28,10 @@ const wrapAsync = <T>(fn: () => Promise<TaskOutcome<T>>): FPromise<TaskOutcome<T
   return fn() as unknown as FPromise<TaskOutcome<T>>
 }
 
-export const QueryBuilder = <T extends TableNames>(
-  client: SupabaseClientType,
-  config: QueryBuilderConfig<T>,
-): Query<T> => {
+export const QueryBuilder = <T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
+  client: SupabaseClientType<DB>,
+  config: QueryBuilderConfig<T, DB>,
+): Query<T, DB> => {
   /**
    * Build the Supabase query from accumulated conditions
    */
@@ -70,7 +70,7 @@ export const QueryBuilder = <T extends TableNames>(
    * Apply a single condition to the query
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const applyCondition = (query: any, condition: QueryCondition<T>): any => {
+  const applyCondition = (query: any, condition: QueryCondition<T, DB>): any => {
     const { where, is, wherein, gt, gte, lt, lte, neq, like, ilike } = condition
 
     // Process WHERE conditions, extracting operators from the where object
@@ -214,7 +214,7 @@ export const QueryBuilder = <T extends TableNames>(
     // Apply IS conditions
     const queryWithIs = is
       ? List(Object.entries(is)).foldLeft(queryWithWhereIn)((q, [column, value]) =>
-          q.is(column as keyof TableRow<T> & string, value as boolean | null),
+          q.is(column as keyof TableRow<T, DB> & string, value as boolean | null),
         )
       : queryWithWhereIn
 
@@ -262,7 +262,7 @@ export const QueryBuilder = <T extends TableNames>(
    * Apply multiple conditions with OR logic
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const applyOrConditions = (query: any, conditions: QueryCondition<T>[]): any => {
+  const applyOrConditions = (query: any, conditions: QueryCondition<T, DB>[]): any => {
     // Start with select
     const selectQuery = query.select("*")
 
@@ -283,7 +283,7 @@ export const QueryBuilder = <T extends TableNames>(
 
     // Separate common conditions from varying conditions
     const commonConditions = new Map<string, unknown>()
-    const varyingConditions: QueryCondition<T>[] = []
+    const varyingConditions: QueryCondition<T, DB>[] = []
 
     // Find conditions that are common across all OR branches
     if (conditions.length > 0) {
@@ -309,7 +309,7 @@ export const QueryBuilder = <T extends TableNames>(
             delete newWhere[key]
           })
           return {
-            where: newWhere as WhereConditions<TableRow<T>>,
+            where: newWhere as WhereConditions<TableRow<T, DB>>,
             is: condition.is,
             wherein: condition.wherein,
           }
@@ -425,9 +425,9 @@ export const QueryBuilder = <T extends TableNames>(
     /**
      * Add OR condition to the query
      */
-    or: (where: WhereConditions<TableRow<T>>, is?: IsConditions<TableRow<T>>): Query<T> => {
+    or: (where: WhereConditions<TableRow<T, DB>>, is?: IsConditions<TableRow<T, DB>>): Query<T, DB> => {
       const newConditions = [...config.conditions, { where, is }]
-      return QueryBuilder(client, {
+      return QueryBuilder<T, DB>(client, {
         ...config,
         conditions: newConditions,
       })
@@ -436,14 +436,14 @@ export const QueryBuilder = <T extends TableNames>(
     /**
      * Filter by branded ID with type safety
      */
-    whereId: <ID extends Brand<string, string>>(id: ID): Query<T> => {
+    whereId: <ID extends Brand<string, string>>(id: ID): Query<T, DB> => {
       const newConditions = [
         ...config.conditions,
         {
-          where: { id: id as unknown } as unknown as WhereConditions<TableRow<T>>,
+          where: { id: id as unknown } as unknown as WhereConditions<TableRow<T, DB>>,
         },
       ]
-      return QueryBuilder(client, {
+      return QueryBuilder<T, DB>(client, {
         ...config,
         conditions: newConditions,
       })
@@ -452,34 +452,34 @@ export const QueryBuilder = <T extends TableNames>(
     /**
      * Add OR condition with branded ID
      */
-    orWhereId: <ID extends Brand<string, string>>(id: ID): Query<T> => {
-      return QueryBuilder(client, config).or({
+    orWhereId: <ID extends Brand<string, string>>(id: ID): Query<T, DB> => {
+      return QueryBuilder<T, DB>(client, config).or({
         id: id as unknown,
-      } as unknown as WhereConditions<TableRow<T>>)
+      } as unknown as WhereConditions<TableRow<T, DB>>)
     },
 
     /**
      * Apply mapping function to query results
      */
-    map: <U>(fn: (item: TableRow<T>) => U): MappedQuery<U> => {
-      return createMappedQuery(QueryBuilder(client, config), fn)
+    map: <U>(fn: (item: TableRow<T, DB>) => U): MappedQuery<U> => {
+      return createMappedQuery<T, DB, U>(QueryBuilder<T, DB>(client, config), fn)
     },
 
     /**
      * Apply filter function to query results
      */
-    filter: (predicate: (item: TableRow<T>) => boolean): Query<T> => {
-      return QueryBuilder(client, {
+    filter: (predicate: (item: TableRow<T, DB>) => boolean): Query<T, DB> => {
+      return QueryBuilder<T, DB>(client, {
         ...config,
-        filterFn: config.filterFn ? (item: TableRow<T>) => config.filterFn!(item) && predicate(item) : predicate,
+        filterFn: config.filterFn ? (item: TableRow<T, DB>) => config.filterFn!(item) && predicate(item) : predicate,
       })
     },
 
     /**
      * Limit the number of results
      */
-    limit: (count: number): Query<T> => {
-      return QueryBuilder(client, {
+    limit: (count: number): Query<T, DB> => {
+      return QueryBuilder<T, DB>(client, {
         ...config,
         limit: count,
       })
@@ -488,8 +488,8 @@ export const QueryBuilder = <T extends TableNames>(
     /**
      * Offset the results for pagination
      */
-    offset: (count: number): Query<T> => {
-      return QueryBuilder(client, {
+    offset: (count: number): Query<T, DB> => {
+      return QueryBuilder<T, DB>(client, {
         ...config,
         offset: count,
       })
@@ -498,11 +498,11 @@ export const QueryBuilder = <T extends TableNames>(
     /**
      * Include all records (no soft delete filter)
      */
-    includeDeleted: (): Query<T> => {
+    includeDeleted: (): Query<T, DB> => {
       if (config.softDeleteAppliedByDefault && config.softDeleteMode === "include") {
         log.warn(`[${config.table}] includeDeleted() called but already including deleted by default`)
       }
-      return QueryBuilder(client, {
+      return QueryBuilder<T, DB>(client, {
         ...config,
         softDeleteMode: "include",
         softDeleteAppliedByDefault: false,
@@ -512,11 +512,11 @@ export const QueryBuilder = <T extends TableNames>(
     /**
      * Exclude soft-deleted records (apply deleted IS NULL filter)
      */
-    excludeDeleted: (): Query<T> => {
+    excludeDeleted: (): Query<T, DB> => {
       if (config.softDeleteAppliedByDefault && config.softDeleteMode === "exclude") {
         log.warn(`[${config.table}] excludeDeleted() called but already excluding deleted by default`)
       }
-      return QueryBuilder(client, {
+      return QueryBuilder<T, DB>(client, {
         ...config,
         softDeleteMode: "exclude",
         softDeleteAppliedByDefault: false,
@@ -526,8 +526,8 @@ export const QueryBuilder = <T extends TableNames>(
     /**
      * Query only soft-deleted records (apply deleted IS NOT NULL filter)
      */
-    onlyDeleted: (): Query<T> => {
-      return QueryBuilder(client, {
+    onlyDeleted: (): Query<T, DB> => {
+      return QueryBuilder<T, DB>(client, {
         ...config,
         softDeleteMode: "only",
         softDeleteAppliedByDefault: false,
@@ -537,7 +537,7 @@ export const QueryBuilder = <T extends TableNames>(
     /**
      * Execute query expecting exactly one result
      */
-    one: (): FPromise<TaskOutcome<Option<TableRow<T>>>> => {
+    one: (): FPromise<TaskOutcome<Option<TableRow<T, DB>>>> => {
       return wrapAsync(async () => {
         try {
           const query = buildSupabaseQuery()
@@ -545,20 +545,20 @@ export const QueryBuilder = <T extends TableNames>(
 
           if (error) {
             log.error(`Error getting ${config.table} item: ${toError(error).toString()}`)
-            return Err<Option<TableRow<T>>>(toError(error))
+            return Err<Option<TableRow<T, DB>>>(toError(error))
           }
 
-          const result = data as TableRow<T>
+          const result = data as TableRow<T, DB>
           const filteredResult = config.filterFn ? config.filterFn(result) : true
 
           if (!filteredResult) {
-            return Ok(Option.none<TableRow<T>>())
+            return Ok(Option.none<TableRow<T, DB>>())
           }
 
           return Ok(Option(result))
         } catch (error) {
           log.error(`Error executing single query on ${config.table}: ${toError(error).toString()}`)
-          return Err<Option<TableRow<T>>>(toError(error))
+          return Err<Option<TableRow<T, DB>>>(toError(error))
         }
       })
     },
@@ -566,7 +566,7 @@ export const QueryBuilder = <T extends TableNames>(
     /**
      * Execute query expecting zero or more results
      */
-    many: (): FPromise<TaskOutcome<List<TableRow<T>>>> => {
+    many: (): FPromise<TaskOutcome<List<TableRow<T, DB>>>> => {
       return wrapAsync(async () => {
         try {
           const query = buildSupabaseQuery()
@@ -574,10 +574,10 @@ export const QueryBuilder = <T extends TableNames>(
 
           if (error) {
             log.error(`Error getting ${config.table} items: ${toError(error).toString()}`)
-            return Err<List<TableRow<T>>>(toError(error))
+            return Err<List<TableRow<T, DB>>>(toError(error))
           }
 
-          const rawResults = data as TableRow<T>[]
+          const rawResults = data as TableRow<T, DB>[]
 
           // Apply filter if present
           const results = config.filterFn ? rawResults.filter(config.filterFn) : rawResults
@@ -585,7 +585,7 @@ export const QueryBuilder = <T extends TableNames>(
           return Ok(List(results))
         } catch (error) {
           log.error(`Error executing multi query on ${config.table}: ${toError(error).toString()}`)
-          return Err<List<TableRow<T>>>(toError(error))
+          return Err<List<TableRow<T, DB>>>(toError(error))
         }
       })
     },
@@ -593,12 +593,12 @@ export const QueryBuilder = <T extends TableNames>(
     /**
      * Execute query expecting first result from potentially multiple
      */
-    first: (): FPromise<TaskOutcome<Option<TableRow<T>>>> => {
+    first: (): FPromise<TaskOutcome<Option<TableRow<T, DB>>>> => {
       return wrapAsync(async () => {
-        const manyResult = await QueryBuilder(client, config).many()
+        const manyResult = await QueryBuilder<T, DB>(client, config).many()
         const list = manyResult.orThrow()
         if (list.isEmpty) {
-          return Ok(Option.none<TableRow<T>>())
+          return Ok(Option.none<TableRow<T, DB>>())
         }
         return Ok(Option(list.head))
       })
@@ -607,8 +607,8 @@ export const QueryBuilder = <T extends TableNames>(
     /**
      * Execute query expecting exactly one result, throw if error or not found
      */
-    oneOrThrow: async (): Promise<TableRow<T>> => {
-      const result = await QueryBuilder(client, config).one()
+    oneOrThrow: async (): Promise<TableRow<T, DB>> => {
+      const result = await QueryBuilder<T, DB>(client, config).one()
       const option = result.orThrow()
       return option.orThrow(new Error(`No record found in ${config.table}`))
     },
@@ -616,16 +616,16 @@ export const QueryBuilder = <T extends TableNames>(
     /**
      * Execute query expecting zero or more results, throw if error
      */
-    manyOrThrow: async (): Promise<List<TableRow<T>>> => {
-      const result = await QueryBuilder(client, config).many()
+    manyOrThrow: async (): Promise<List<TableRow<T, DB>>> => {
+      const result = await QueryBuilder<T, DB>(client, config).many()
       return result.orThrow()
     },
 
     /**
      * Execute query expecting first result, throw if error or empty
      */
-    firstOrThrow: async (): Promise<TableRow<T>> => {
-      const result = await QueryBuilder(client, config).first()
+    firstOrThrow: async (): Promise<TableRow<T, DB>> => {
+      const result = await QueryBuilder<T, DB>(client, config).first()
       const option = result.orThrow()
       return option.orThrow(new Error(`No records found in ${config.table}`))
     },
@@ -635,18 +635,18 @@ export const QueryBuilder = <T extends TableNames>(
 /**
  * Functional MappedQuery implementation
  */
-const createMappedQuery = <T extends TableNames, U>(
-  sourceQuery: Query<T>,
-  mapFn: (item: TableRow<T>) => U,
+const createMappedQuery = <T extends TableNames<DB>, DB extends DatabaseSchema = Database, U = unknown>(
+  sourceQuery: Query<T, DB>,
+  mapFn: (item: TableRow<T, DB>) => U,
 ): MappedQuery<U> => {
   return {
     map: <V>(fn: (item: U) => V): MappedQuery<V> => {
-      return createMappedQuery(sourceQuery, (item: TableRow<T>) => fn(mapFn(item)))
+      return createMappedQuery<T, DB, V>(sourceQuery, (item: TableRow<T, DB>) => fn(mapFn(item)))
     },
 
     filter: (predicate: (item: U) => boolean): MappedQuery<U> => {
-      const filteredQuery = sourceQuery.filter((item: TableRow<T>) => predicate(mapFn(item)))
-      return createMappedQuery(filteredQuery, mapFn)
+      const filteredQuery = sourceQuery.filter((item: TableRow<T, DB>) => predicate(mapFn(item)))
+      return createMappedQuery<T, DB, U>(filteredQuery, mapFn)
     },
 
     one: (): FPromise<TaskOutcome<Option<U>>> => {
@@ -710,21 +710,21 @@ const createMappedQuery = <T extends TableNames, U>(
 /**
  * Factory function to create new functional QueryBuilder instances
  */
-export const createQuery = <T extends TableNames>(
-  client: SupabaseClientType,
+export const createQuery = <T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
+  client: SupabaseClientType<DB>,
   table: T,
-  where: WhereConditions<TableRow<T>> = {},
-  is?: IsConditions<TableRow<T>>,
-  wherein?: Partial<Record<keyof TableRow<T>, unknown[]>>,
-  order?: [keyof TableRow<T> & string, { ascending?: boolean; nullsFirst?: boolean }],
+  where: WhereConditions<TableRow<T, DB>> = {},
+  is?: IsConditions<TableRow<T, DB>>,
+  wherein?: Partial<Record<keyof TableRow<T, DB>, unknown[]>>,
+  order?: [keyof TableRow<T, DB> & string, { ascending?: boolean; nullsFirst?: boolean }],
   softDeleteConfig?: { mode?: "include" | "exclude" | "only"; appliedByDefault?: boolean },
-): Query<T> => {
-  const config: QueryBuilderConfig<T> = {
+): Query<T, DB> => {
+  const config: QueryBuilderConfig<T, DB> = {
     table,
     conditions: [{ where, is, wherein }],
     order,
     softDeleteMode: softDeleteConfig?.mode,
     softDeleteAppliedByDefault: softDeleteConfig?.appliedByDefault,
   }
-  return QueryBuilder(client, config)
+  return QueryBuilder<T, DB>(client, config)
 }

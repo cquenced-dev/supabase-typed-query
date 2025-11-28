@@ -1,4 +1,4 @@
-import type { EmptyObject, TableNames, TableRow } from "@/types"
+import type { Database, DatabaseSchema, EmptyObject, TableNames, TableRow } from "@/types"
 
 import type { Brand, FPromise, List, Option, TaskOutcome } from "functype"
 
@@ -75,37 +75,46 @@ export type BrandedWhereParams<T extends object = EmptyObject> = {
 // Helper type for branded field values
 export type BrandedFieldValue<T> = T extends Brand<string, infer BaseType> ? T | BaseType : T
 
-// Core Query interface with branded type support
-export interface Query<T extends TableNames> {
+// =============================================================================
+// Core Query Interface with Database Generic Support
+// =============================================================================
+
+/**
+ * Core Query interface with branded type support.
+ *
+ * @typeParam T - The table name
+ * @typeParam DB - The database schema type (defaults to placeholder Database)
+ */
+export interface Query<T extends TableNames<DB>, DB extends DatabaseSchema = Database> {
   // Execution methods - explicit about expected results
-  one(): FPromise<TaskOutcome<Option<TableRow<T>>>>
-  many(): FPromise<TaskOutcome<List<TableRow<T>>>>
-  first(): FPromise<TaskOutcome<Option<TableRow<T>>>>
+  one(): FPromise<TaskOutcome<Option<TableRow<T, DB>>>>
+  many(): FPromise<TaskOutcome<List<TableRow<T, DB>>>>
+  first(): FPromise<TaskOutcome<Option<TableRow<T, DB>>>>
 
   // OrThrow methods - throw errors instead of returning TaskOutcome (v0.8.0+)
-  oneOrThrow(): Promise<TableRow<T>>
-  manyOrThrow(): Promise<List<TableRow<T>>>
-  firstOrThrow(): Promise<TableRow<T>>
+  oneOrThrow(): Promise<TableRow<T, DB>>
+  manyOrThrow(): Promise<List<TableRow<T, DB>>>
+  firstOrThrow(): Promise<TableRow<T, DB>>
 
   // Query composition - chainable OR logic with type-safe where conditions
-  or(where: WhereConditions<TableRow<T>>, is?: IsConditions<TableRow<T>>): Query<T>
+  or(where: WhereConditions<TableRow<T, DB>>, is?: IsConditions<TableRow<T, DB>>): Query<T, DB>
 
   // Branded type-aware query methods (simplified)
-  whereId<ID extends Brand<string, string>>(id: ID): Query<T>
-  orWhereId<ID extends Brand<string, string>>(id: ID): Query<T>
+  whereId<ID extends Brand<string, string>>(id: ID): Query<T, DB>
+  orWhereId<ID extends Brand<string, string>>(id: ID): Query<T, DB>
 
   // Functional operations - maintain composability
-  map<U>(fn: (item: TableRow<T>) => U): MappedQuery<U>
-  filter(predicate: (item: TableRow<T>) => boolean): Query<T>
+  map<U>(fn: (item: TableRow<T, DB>) => U): MappedQuery<U>
+  filter(predicate: (item: TableRow<T, DB>) => boolean): Query<T, DB>
 
   // Pagination
-  limit(count: number): Query<T>
-  offset(count: number): Query<T>
+  limit(count: number): Query<T, DB>
+  offset(count: number): Query<T, DB>
 
   // Soft delete filtering
-  includeDeleted(): Query<T>
-  excludeDeleted(): Query<T>
-  onlyDeleted(): Query<T>
+  includeDeleted(): Query<T, DB>
+  excludeDeleted(): Query<T, DB>
+  onlyDeleted(): Query<T, DB>
 }
 
 // Mapped query for transformed results
@@ -124,36 +133,66 @@ export interface MappedQuery<U> {
   filter(predicate: (item: U) => boolean): MappedQuery<U>
 }
 
-// Query condition for internal state management with type-safe where
-export interface QueryCondition<T extends TableNames> {
-  where: WhereConditions<TableRow<T>>
-  is?: IsConditions<TableRow<T>>
-  wherein?: Partial<Record<keyof TableRow<T>, unknown[]>>
+// =============================================================================
+// Query Condition Types
+// =============================================================================
+
+/**
+ * Query condition for internal state management with type-safe where.
+ *
+ * @typeParam T - The table name
+ * @typeParam DB - The database schema type (defaults to placeholder Database)
+ */
+export interface QueryCondition<T extends TableNames<DB>, DB extends DatabaseSchema = Database> {
+  where: WhereConditions<TableRow<T, DB>>
+  is?: IsConditions<TableRow<T, DB>>
+  wherein?: Partial<Record<keyof TableRow<T, DB>, unknown[]>>
   // Comparison operators
-  gt?: Partial<Record<keyof TableRow<T>, number | string | Date>>
-  gte?: Partial<Record<keyof TableRow<T>, number | string | Date>>
-  lt?: Partial<Record<keyof TableRow<T>, number | string | Date>>
-  lte?: Partial<Record<keyof TableRow<T>, number | string | Date>>
-  neq?: Partial<Record<keyof TableRow<T>, unknown>>
+  gt?: Partial<Record<keyof TableRow<T, DB>, number | string | Date>>
+  gte?: Partial<Record<keyof TableRow<T, DB>, number | string | Date>>
+  lt?: Partial<Record<keyof TableRow<T, DB>, number | string | Date>>
+  lte?: Partial<Record<keyof TableRow<T, DB>, number | string | Date>>
+  neq?: Partial<Record<keyof TableRow<T, DB>, unknown>>
   // Pattern matching
-  like?: Partial<Record<keyof TableRow<T>, string>>
-  ilike?: Partial<Record<keyof TableRow<T>, string>>
+  like?: Partial<Record<keyof TableRow<T, DB>, string>>
+  ilike?: Partial<Record<keyof TableRow<T, DB>, string>>
 }
 
-// Entity-specific query interfaces for better type safety
-export interface EntityQuery<T extends TableNames> extends Query<T> {
+// =============================================================================
+// Entity Query Interfaces
+// =============================================================================
+
+/**
+ * Entity-specific query interfaces for better type safety.
+ *
+ * @typeParam T - The table name
+ * @typeParam DB - The database schema type (defaults to placeholder Database)
+ */
+export interface EntityQuery<T extends TableNames<DB>, DB extends DatabaseSchema = Database> extends Query<T, DB> {
   // Entity-specific methods can be added here
-  normalize(): NormalizedQuery<T>
+  normalize(): NormalizedQuery<T, DB>
 }
 
-export interface NormalizedQuery<T extends TableNames> {
-  one(): FPromise<TaskOutcome<Option<TableRow<T>>>>
-  many(): FPromise<TaskOutcome<List<TableRow<T>>>>
-  first(): FPromise<TaskOutcome<Option<TableRow<T>>>>
+/**
+ * Normalized query interface.
+ *
+ * @typeParam T - The table name
+ * @typeParam DB - The database schema type (defaults to placeholder Database)
+ */
+export interface NormalizedQuery<T extends TableNames<DB>, DB extends DatabaseSchema = Database> {
+  one(): FPromise<TaskOutcome<Option<TableRow<T, DB>>>>
+  many(): FPromise<TaskOutcome<List<TableRow<T, DB>>>>
+  first(): FPromise<TaskOutcome<Option<TableRow<T, DB>>>>
 }
+
+// =============================================================================
+// Type Guards
+// =============================================================================
 
 // Type guards for runtime type checking
-export const isQuery = <T extends TableNames>(obj: unknown): obj is Query<T> => {
+export const isQuery = <T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
+  obj: unknown,
+): obj is Query<T, DB> => {
   return (
     typeof obj === "object" &&
     obj !== null &&
@@ -178,22 +217,46 @@ export const isMappedQuery = <U>(obj: unknown): obj is MappedQuery<U> => {
   )
 }
 
-// Utility types for query parameters with type safety
-export type QueryWhereParams<T extends TableNames> = WhereConditions<TableRow<T>>
-export type QueryIsParams<T extends TableNames> = IsConditions<TableRow<T>>
-export type QueryWhereinParams<T extends TableNames> = Partial<Record<keyof TableRow<T>, unknown[]>>
-export type QueryOrderParams<T extends TableNames> = [
-  keyof TableRow<T> & string,
+// =============================================================================
+// Utility Types for Query Parameters
+// =============================================================================
+
+/**
+ * Utility types for query parameters with type safety.
+ *
+ * @typeParam T - The table name
+ * @typeParam DB - The database schema type (defaults to placeholder Database)
+ */
+export type QueryWhereParams<T extends TableNames<DB>, DB extends DatabaseSchema = Database> = WhereConditions<
+  TableRow<T, DB>
+>
+export type QueryIsParams<T extends TableNames<DB>, DB extends DatabaseSchema = Database> = IsConditions<
+  TableRow<T, DB>
+>
+export type QueryWhereinParams<T extends TableNames<DB>, DB extends DatabaseSchema = Database> = Partial<
+  Record<keyof TableRow<T, DB>, unknown[]>
+>
+export type QueryOrderParams<T extends TableNames<DB>, DB extends DatabaseSchema = Database> = [
+  keyof TableRow<T, DB> & string,
   { ascending?: boolean; nullsFirst?: boolean },
 ]
 
-// Builder configuration for query construction
-export interface QueryBuilderConfig<T extends TableNames> {
+// =============================================================================
+// Builder Configuration
+// =============================================================================
+
+/**
+ * Builder configuration for query construction.
+ *
+ * @typeParam T - The table name
+ * @typeParam DB - The database schema type (defaults to placeholder Database)
+ */
+export interface QueryBuilderConfig<T extends TableNames<DB>, DB extends DatabaseSchema = Database> {
   table: T
-  conditions: QueryCondition<T>[]
-  order?: QueryOrderParams<T>
-  mapFn?: (item: TableRow<T>) => unknown
-  filterFn?: (item: TableRow<T>) => boolean
+  conditions: QueryCondition<T, DB>[]
+  order?: QueryOrderParams<T, DB>
+  mapFn?: (item: TableRow<T, DB>) => unknown
+  filterFn?: (item: TableRow<T, DB>) => boolean
   limit?: number
   offset?: number
   softDeleteMode?: SoftDeleteMode

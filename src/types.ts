@@ -2,8 +2,36 @@
  * Core type definitions for supabase-typed-query
  */
 
-// Database types placeholder - will be provided by consumer via module augmentation
-export interface Database {
+// =============================================================================
+// Database Schema Types
+// =============================================================================
+
+/**
+ * Base schema interface that all databases must conform to.
+ * Consumer-provided Database types must extend this interface.
+ */
+export interface DatabaseSchema {
+  public: {
+    Tables: Record<
+      string,
+      {
+        Row: object
+        Insert: object
+        Update: object
+      }
+    >
+    Views?: Record<string, { Row: object }>
+    Functions?: Record<string, { Args: object; Returns: unknown }>
+    Enums?: Record<string, unknown>
+    CompositeTypes?: Record<string, unknown>
+  }
+}
+
+/**
+ * Default Database type - used as fallback when no specific database type is provided.
+ * For proper type inference, consumers should pass their generated Database type as a generic.
+ */
+export interface Database extends DatabaseSchema {
   public: {
     Tables: Record<
       string,
@@ -20,14 +48,53 @@ export interface Database {
   }
 }
 
-// Table name types
-export type TableNames = keyof Database["public"]["Tables"]
-export type TableRow<T extends TableNames> = Database["public"]["Tables"][T]["Row"]
-export type TableInsert<T extends TableNames> = Database["public"]["Tables"][T]["Insert"]
-export type TableUpdate<T extends TableNames> = Database["public"]["Tables"][T]["Update"]
+// =============================================================================
+// Generic Table Types
+// =============================================================================
+
+/**
+ * Table names for a given database schema.
+ * @typeParam DB - The database schema type (defaults to placeholder Database)
+ */
+export type TableNames<DB extends DatabaseSchema = Database> = keyof DB["public"]["Tables"] & string
+
+/**
+ * Row type for a given table in a database schema.
+ * @typeParam T - The table name
+ * @typeParam DB - The database schema type (defaults to placeholder Database)
+ */
+export type TableRow<T extends TableNames<DB>, DB extends DatabaseSchema = Database> = DB["public"]["Tables"][T]["Row"]
+
+/**
+ * Insert type for a given table in a database schema.
+ * @typeParam T - The table name
+ * @typeParam DB - The database schema type (defaults to placeholder Database)
+ */
+export type TableInsert<
+  T extends TableNames<DB>,
+  DB extends DatabaseSchema = Database,
+> = DB["public"]["Tables"][T]["Insert"]
+
+/**
+ * Update type for a given table in a database schema.
+ * @typeParam T - The table name
+ * @typeParam DB - The database schema type (defaults to placeholder Database)
+ */
+export type TableUpdate<
+  T extends TableNames<DB>,
+  DB extends DatabaseSchema = Database,
+> = DB["public"]["Tables"][T]["Update"]
+
+// =============================================================================
+// Utility Types
+// =============================================================================
 
 // Empty object type for optional parameters
 export type EmptyObject = Record<string, never>
+
+// =============================================================================
+// Query Builder Types
+// =============================================================================
 
 // Query builder interface that Supabase returns from .from()
 export interface QueryBuilder extends Promise<{ data: unknown; error: unknown }> {
@@ -53,11 +120,17 @@ export interface QueryBuilder extends Promise<{ data: unknown; error: unknown }>
   order: (column: string, options?: { ascending?: boolean }) => QueryBuilder
 }
 
+// =============================================================================
+// Client Types
+// =============================================================================
+
 /**
  * Supabase client type - accepts any client with a compatible from() method.
  * Uses `unknown` return type to allow SupabaseClient<Database> from @supabase/supabase-js
  * to be used directly without type casting.
+ *
+ * @typeParam DB - The database schema type (defaults to placeholder Database)
  */
-export interface SupabaseClientType {
-  from: (table: string) => unknown
+export interface SupabaseClientType<DB extends DatabaseSchema = Database> {
+  from: (table: TableNames<DB>) => unknown
 }

@@ -26,7 +26,7 @@
  * ```
  */
 
-import type { SupabaseClientType, TableNames } from "@/types"
+import type { Database, DatabaseSchema, SupabaseClientType, TableNames } from "@/types"
 
 import {
   getSoftDeleteMode,
@@ -49,12 +49,17 @@ import type { IPartitionedEntity, PartitionedEntityConfig, PartitionKey } from "
  *
  * @typeParam T - The table name type
  * @typeParam K - The partition key type (string or branded type)
+ * @typeParam DB - The database schema type (defaults to placeholder Database)
  */
-export const PartitionedEntity = <T extends TableNames, K extends PartitionKey = string>(
-  client: SupabaseClientType,
+export const PartitionedEntity = <
+  T extends TableNames<DB>,
+  K extends PartitionKey = string,
+  DB extends DatabaseSchema = Database,
+>(
+  client: SupabaseClientType<DB>,
   name: T,
   config: PartitionedEntityConfig,
-): IPartitionedEntity<T, K> => {
+): IPartitionedEntity<T, K, DB> => {
   const softDeleteMode = getSoftDeleteMode(config.softDelete)
   const { partitionField } = config
 
@@ -65,7 +70,7 @@ export const PartitionedEntity = <T extends TableNames, K extends PartitionKey =
      * @param params Query parameters including id, where conditions, and is conditions
      * @returns A chainable query that can be executed with .one(), .many(), or .first()
      */
-    getItem: makePartitionedGetItem<T, K>(client, name, partitionField, softDeleteMode),
+    getItem: makePartitionedGetItem<T, K, DB>(client, name, partitionField, softDeleteMode),
 
     /**
      * Get a list of items from the table within a partition.
@@ -73,7 +78,7 @@ export const PartitionedEntity = <T extends TableNames, K extends PartitionKey =
      * @param params Optional query parameters including where, is, wherein, and order
      * @returns A chainable query that can be executed with .one(), .many(), or .first()
      */
-    getItems: makePartitionedGetItems<T, K>(client, name, partitionField, softDeleteMode),
+    getItems: makePartitionedGetItems<T, K, DB>(client, name, partitionField, softDeleteMode),
 
     /**
      * Adds multiple items to the table.
@@ -81,7 +86,7 @@ export const PartitionedEntity = <T extends TableNames, K extends PartitionKey =
      * @param params Parameters including items array
      * @returns A mutation query with OrThrow methods
      */
-    addItems: makeAddItems(client, name),
+    addItems: makeAddItems<T, DB>(client, name),
 
     /**
      * Update a single item in the table within a partition.
@@ -89,7 +94,7 @@ export const PartitionedEntity = <T extends TableNames, K extends PartitionKey =
      * @param params Update parameters including id, item data, and optional filters
      * @returns A mutation query with OrThrow methods
      */
-    updateItem: makePartitionedUpdateItem<T, K>(client, name, partitionField),
+    updateItem: makePartitionedUpdateItem<T, K, DB>(client, name, partitionField),
 
     /**
      * Update multiple items in the table within a partition.
@@ -97,7 +102,7 @@ export const PartitionedEntity = <T extends TableNames, K extends PartitionKey =
      * @param params Update parameters including items array, identity, and optional filters
      * @returns A mutation query with OrThrow methods
      */
-    updateItems: makePartitionedUpdateItems<T, K>(client, name, partitionField),
+    updateItems: makePartitionedUpdateItems<T, K, DB>(client, name, partitionField),
 
     /**
      * Upsert multiple items with different data per row within a partition.
@@ -106,6 +111,6 @@ export const PartitionedEntity = <T extends TableNames, K extends PartitionKey =
      * @param params Upsert parameters including items array and identity columns
      * @returns A mutation query with OrThrow methods
      */
-    upsertItems: makePartitionedUpsertItems<T, K>(client, name, partitionField),
+    upsertItems: makePartitionedUpsertItems<T, K, DB>(client, name, partitionField),
   }
 }

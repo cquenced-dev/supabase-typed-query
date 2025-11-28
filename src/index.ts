@@ -6,6 +6,7 @@
 // Core types
 export type {
   Database,
+  DatabaseSchema,
   EmptyObject,
   QueryBuilder,
   SupabaseClientType,

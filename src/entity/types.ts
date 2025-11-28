@@ -3,7 +3,7 @@
  */
 
 import type { MultiExecution, Query, SingleExecution, WhereConditions } from "@/query/Query"
-import type { EmptyObject, TableInsert, TableNames, TableRow, TableUpdate } from "@/types"
+import type { Database, DatabaseSchema, EmptyObject, TableInsert, TableNames, TableRow, TableUpdate } from "@/types"
 
 import type { Brand, FPromise, List, TaskOutcome } from "functype"
 import { Option } from "functype"
@@ -84,38 +84,50 @@ export type GetItemsParams<T extends object = EmptyObject> = WhereParams<T> &
   WhereinParams<T> &
   OrderParams<T>
 
-export type AddItemsParams<T extends TableNames> = {
-  items: TableInsert<T>[]
+export type AddItemsParams<T extends TableNames<DB>, DB extends DatabaseSchema = Database> = {
+  items: TableInsert<T, DB>[]
 }
 
 /**
  * Prisma-style update params for single item: { where, data }
  */
-export type UpdateItemParams<T extends TableNames, Row extends object = EmptyObject> = {
+export type UpdateItemParams<
+  T extends TableNames<DB>,
+  Row extends object = EmptyObject,
+  DB extends DatabaseSchema = Database,
+> = {
   /** Conditions to match the item to update */
   where: WhereConditions<Row>
   /** The data to update */
-  data: TableUpdate<T>
+  data: TableUpdate<T, DB>
 } & IsParams<Row> &
   WhereinParams<Row>
 
 /**
  * Prisma-style update params for multiple items: { where, data }
  */
-export type UpdateItemsParams<T extends TableNames, Row extends object = EmptyObject> = {
+export type UpdateItemsParams<
+  T extends TableNames<DB>,
+  Row extends object = EmptyObject,
+  DB extends DatabaseSchema = Database,
+> = {
   /** Conditions to match items to update */
   where: WhereConditions<Row>
   /** The data to update on all matched items */
-  data: TableUpdate<T>
+  data: TableUpdate<T, DB>
 } & IsParams<Row> &
   WhereinParams<Row>
 
 /**
  * Batch upsert params: update multiple rows with different data per row
  */
-export type UpsertItemsParams<T extends TableNames, Row extends object = EmptyObject> = {
+export type UpsertItemsParams<
+  T extends TableNames<DB>,
+  Row extends object = EmptyObject,
+  DB extends DatabaseSchema = Database,
+> = {
   /** Array of items to upsert, each with its own data */
-  items: TableUpdate<T>[]
+  items: TableUpdate<T, DB>[]
   /** Column(s) to use as identity for matching (default: "id") */
   identity?: (keyof Row & string) | (keyof Row & string)[]
 }
@@ -180,29 +192,42 @@ export function SingleMutationQuery<T>(promise: FPromise<TaskOutcome<T>>): Mutat
 /**
  * Base interface for Entity instances (global, no partition)
  */
-export type IEntity<T extends TableNames> = {
-  getItem(params: GetItemParams<TableRow<T>>): Query<T>
-  getItems(params?: GetItemsParams<TableRow<T>>): Query<T>
-  addItems(params: AddItemsParams<T>): MutationMultiExecution<TableRow<T>>
-  updateItem(params: UpdateItemParams<T, TableRow<T>>): MutationSingleExecution<TableRow<T>>
-  updateItems(params: UpdateItemsParams<T, TableRow<T>>): MutationMultiExecution<TableRow<T>>
-  upsertItems(params: UpsertItemsParams<T, TableRow<T>>): MutationMultiExecution<TableRow<T>>
+export type IEntity<T extends TableNames<DB>, DB extends DatabaseSchema = Database> = {
+  getItem(params: GetItemParams<TableRow<T, DB>>): Query<T, DB>
+  getItems(params?: GetItemsParams<TableRow<T, DB>>): Query<T, DB>
+  addItems(params: AddItemsParams<T, DB>): MutationMultiExecution<TableRow<T, DB>>
+  updateItem(params: UpdateItemParams<T, TableRow<T, DB>, DB>): MutationSingleExecution<TableRow<T, DB>>
+  updateItems(params: UpdateItemsParams<T, TableRow<T, DB>, DB>): MutationMultiExecution<TableRow<T, DB>>
+  upsertItems(params: UpsertItemsParams<T, TableRow<T, DB>, DB>): MutationMultiExecution<TableRow<T, DB>>
 }
 
 /**
  * Interface for PartitionedEntity instances (requires partition key on calls)
  */
-export type IPartitionedEntity<T extends TableNames, K extends PartitionKey> = {
-  getItem(partitionKey: K, params: GetItemParams<TableRow<T>>): Query<T>
-  getItems(partitionKey: K, params?: GetItemsParams<TableRow<T>>): Query<T>
-  addItems(params: AddItemsParams<T>): MutationMultiExecution<TableRow<T>>
-  updateItem(partitionKey: K, params: UpdateItemParams<T, TableRow<T>>): MutationSingleExecution<TableRow<T>>
-  updateItems(partitionKey: K, params: UpdateItemsParams<T, TableRow<T>>): MutationMultiExecution<TableRow<T>>
-  upsertItems(partitionKey: K, params: UpsertItemsParams<T, TableRow<T>>): MutationMultiExecution<TableRow<T>>
+export type IPartitionedEntity<
+  T extends TableNames<DB>,
+  K extends PartitionKey,
+  DB extends DatabaseSchema = Database,
+> = {
+  getItem(partitionKey: K, params: GetItemParams<TableRow<T, DB>>): Query<T, DB>
+  getItems(partitionKey: K, params?: GetItemsParams<TableRow<T, DB>>): Query<T, DB>
+  addItems(params: AddItemsParams<T, DB>): MutationMultiExecution<TableRow<T, DB>>
+  updateItem(
+    partitionKey: K,
+    params: UpdateItemParams<T, TableRow<T, DB>, DB>,
+  ): MutationSingleExecution<TableRow<T, DB>>
+  updateItems(
+    partitionKey: K,
+    params: UpdateItemsParams<T, TableRow<T, DB>, DB>,
+  ): MutationMultiExecution<TableRow<T, DB>>
+  upsertItems(
+    partitionKey: K,
+    params: UpsertItemsParams<T, TableRow<T, DB>, DB>,
+  ): MutationMultiExecution<TableRow<T, DB>>
 }
 
 /**
  * Type for an entity instance for a specific table
- * @deprecated Use IEntity<T> instead
+ * @deprecated Use IEntity<T, DB> instead
  */
-export type EntityType<T extends TableNames> = IEntity<T>
+export type EntityType<T extends TableNames<DB>, DB extends DatabaseSchema = Database> = IEntity<T, DB>

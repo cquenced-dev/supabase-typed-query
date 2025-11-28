@@ -1,4 +1,13 @@
-import type { EmptyObject, SupabaseClientType, TableInsert, TableNames, TableRow, TableUpdate } from "@/types"
+import type {
+  Database,
+  DatabaseSchema,
+  EmptyObject,
+  SupabaseClientType,
+  TableInsert,
+  TableNames,
+  TableRow,
+  TableUpdate,
+} from "@/types"
 import { toError } from "@/utils/errors"
 
 import type { FPromise, TaskOutcome } from "functype"
@@ -41,18 +50,19 @@ const wrapAsync = <T>(fn: () => Promise<TaskOutcome<T>>): FPromise<TaskOutcome<T
 /**
  * Retrieves a single entity from the specified table.
  * @template T - The table name
+ * @template DB - The database schema type
  * @param client - The Supabase client instance
  * @param table - The table to query
  * @param where - Conditions to filter by
  * @param is - IS conditions to filter by
  * @returns A promise resolving to the entity if found
  */
-export const getEntity = <T extends TableNames>(
-  client: SupabaseClientType,
+export const getEntity = <T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
+  client: SupabaseClientType<DB>,
   table: T,
-  where: WhereConditions<TableRow<T>>,
-  is?: IsConditionsLocal<TableRow<T>>,
-): FPromise<TaskOutcome<TableRow<T>>> =>
+  where: WhereConditions<TableRow<T, DB>>,
+  is?: IsConditionsLocal<TableRow<T, DB>>,
+): FPromise<TaskOutcome<TableRow<T, DB>>> =>
   wrapAsync(async () => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -60,25 +70,26 @@ export const getEntity = <T extends TableNames>(
 
       const queryWithIs = is
         ? List(Object.entries(is)).foldLeft(baseQuery)((query, [column, value]) =>
-            query.is(column as keyof TableRow<T> & string, value as boolean | null),
+            query.is(column as keyof TableRow<T, DB> & string, value as boolean | null),
           )
         : baseQuery
 
       const { data, error } = await queryWithIs.single()
 
       if (error) {
-        return Err<TableRow<T>>(toError(error))
+        return Err<TableRow<T, DB>>(toError(error))
       }
 
-      return Ok(data as TableRow<T>)
+      return Ok(data as TableRow<T, DB>)
     } catch (error) {
-      return Err<TableRow<T>>(toError(error))
+      return Err<TableRow<T, DB>>(toError(error))
     }
   })
 
 /**
  * Retrieves multiple entities from the specified table.
  * @template T - The table name
+ * @template DB - The database schema type
  * @param client - The Supabase client instance
  * @param table - The table to query
  * @param where - Conditions to filter by
@@ -87,17 +98,17 @@ export const getEntity = <T extends TableNames>(
  * @param order - Optional ordering parameters
  * @returns A promise resolving to the entities if found
  */
-export const getEntities = <T extends TableNames>(
-  client: SupabaseClientType,
+export const getEntities = <T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
+  client: SupabaseClientType<DB>,
   table: T,
-  where: WhereConditions<TableRow<T>> = {},
-  is?: IsConditionsLocal<TableRow<T>>,
-  wherein?: Partial<Record<keyof TableRow<T>, unknown[]>>,
-  order: [keyof TableRow<T> & string, { ascending?: boolean; nullsFirst?: boolean }] = [
-    "id" as keyof TableRow<T> & string,
+  where: WhereConditions<TableRow<T, DB>> = {},
+  is?: IsConditionsLocal<TableRow<T, DB>>,
+  wherein?: Partial<Record<keyof TableRow<T, DB>, unknown[]>>,
+  order: [keyof TableRow<T, DB> & string, { ascending?: boolean; nullsFirst?: boolean }] = [
+    "id" as keyof TableRow<T, DB> & string,
     { ascending: true },
   ],
-): FPromise<TaskOutcome<List<TableRow<T>>>> =>
+): FPromise<TaskOutcome<List<TableRow<T, DB>>>> =>
   wrapAsync(async () => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -111,7 +122,7 @@ export const getEntities = <T extends TableNames>(
 
       const queryWithIs = is
         ? List(Object.entries(is)).foldLeft(queryWithIn)((query, [column, value]) =>
-            query.is(column as keyof TableRow<T> & string, value as boolean | null),
+            query.is(column as keyof TableRow<T, DB> & string, value as boolean | null),
           )
         : queryWithIn
 
@@ -120,46 +131,48 @@ export const getEntities = <T extends TableNames>(
       const { data, error } = await queryOrderBy
 
       if (error) {
-        return Err<List<TableRow<T>>>(toError(error))
+        return Err<List<TableRow<T, DB>>>(toError(error))
       }
 
-      return Ok(List(data as TableRow<T>[]))
+      return Ok(List(data as TableRow<T, DB>[]))
     } catch (error) {
-      return Err<List<TableRow<T>>>(toError(error))
+      return Err<List<TableRow<T, DB>>>(toError(error))
     }
   })
 
 /**
  * Adds multiple entities to the specified table.
  * @template T - The table name
+ * @template DB - The database schema type
  * @param client - The Supabase client instance
  * @param table - The table to insert into
  * @param entities - The entities to add
  * @returns A promise resolving to the added entities
  */
-export const addEntities = <T extends TableNames>(
-  client: SupabaseClientType,
+export const addEntities = <T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
+  client: SupabaseClientType<DB>,
   table: T,
-  entities: TableInsert<T>[],
-): FPromise<TaskOutcome<List<TableRow<T>>>> =>
+  entities: TableInsert<T, DB>[],
+): FPromise<TaskOutcome<List<TableRow<T, DB>>>> =>
   wrapAsync(async () => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (client.from(table) as any).insert(entities as never).select()
 
       if (error) {
-        return Err<List<TableRow<T>>>(toError(error))
+        return Err<List<TableRow<T, DB>>>(toError(error))
       }
 
-      return Ok(List(data as unknown as TableRow<T>[]))
+      return Ok(List(data as unknown as TableRow<T, DB>[]))
     } catch (error) {
-      return Err<List<TableRow<T>>>(toError(error))
+      return Err<List<TableRow<T, DB>>>(toError(error))
     }
   })
 
 /**
  * Updates a single entity in the specified table.
  * @template T - The table name
+ * @template DB - The database schema type
  * @param client - The Supabase client instance
  * @param table - The table to update
  * @param entities - The entity data to update
@@ -168,14 +181,14 @@ export const addEntities = <T extends TableNames>(
  * @param wherein - WHERE IN conditions to filter by
  * @returns A promise resolving to the updated entity
  */
-export const updateEntity = <T extends TableNames>(
-  client: SupabaseClientType,
+export const updateEntity = <T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
+  client: SupabaseClientType<DB>,
   table: T,
-  entities: TableUpdate<T>,
-  where: WhereConditions<TableRow<T>>,
-  is?: IsConditionsLocal<TableRow<T>>,
-  wherein?: Partial<Record<keyof TableRow<T>, unknown[]>>,
-): FPromise<TaskOutcome<TableRow<T>>> =>
+  entities: TableUpdate<T, DB>,
+  where: WhereConditions<TableRow<T, DB>>,
+  is?: IsConditionsLocal<TableRow<T, DB>>,
+  wherein?: Partial<Record<keyof TableRow<T, DB>, unknown[]>>,
+): FPromise<TaskOutcome<TableRow<T, DB>>> =>
   wrapAsync(async () => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -189,19 +202,19 @@ export const updateEntity = <T extends TableNames>(
 
       const queryWithIs = is
         ? List(Object.entries(is)).foldLeft(queryWithIn)((query, [column, value]) =>
-            query.is(column as keyof TableRow<T> & string, value as boolean | null),
+            query.is(column as keyof TableRow<T, DB> & string, value as boolean | null),
           )
         : queryWithIn
 
       const { data, error } = await queryWithIs.select().single()
 
       if (error) {
-        return Err<TableRow<T>>(toError(error))
+        return Err<TableRow<T, DB>>(toError(error))
       }
 
-      return Ok(data as TableRow<T>)
+      return Ok(data as TableRow<T, DB>)
     } catch (error) {
-      return Err<TableRow<T>>(toError(error))
+      return Err<TableRow<T, DB>>(toError(error))
     }
   })
 
@@ -209,6 +222,7 @@ export const updateEntity = <T extends TableNames>(
  * Upserts multiple entities in the specified table (insert or update on conflict).
  * Uses Supabase's upsert() under the hood with onConflict resolution.
  * @template T - The table name
+ * @template DB - The database schema type
  * @param client - The Supabase client instance
  * @param table - The table to upsert into
  * @param entities - The entities to upsert
@@ -218,15 +232,16 @@ export const updateEntity = <T extends TableNames>(
  * @param wherein - WHERE IN conditions to filter by
  * @returns A promise resolving to the upserted entities
  */
-export const upsertEntities = <T extends TableNames>(
-  client: SupabaseClientType,
+export const upsertEntities = <T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
+  client: SupabaseClientType<DB>,
   table: T,
-  entities: TableUpdate<T>[],
-  identity: (keyof TableRow<T> & string) | (keyof TableRow<T> & string)[] = "id" as keyof TableRow<T> & string,
-  where?: WhereConditions<TableRow<T>>,
-  is?: IsConditionsLocal<TableRow<T>>,
-  wherein?: Partial<Record<keyof TableRow<T>, unknown[]>>,
-): FPromise<TaskOutcome<List<TableRow<T>>>> =>
+  entities: TableUpdate<T, DB>[],
+  identity: (keyof TableRow<T, DB> & string) | (keyof TableRow<T, DB> & string)[] = "id" as keyof TableRow<T, DB> &
+    string,
+  where?: WhereConditions<TableRow<T, DB>>,
+  is?: IsConditionsLocal<TableRow<T, DB>>,
+  wherein?: Partial<Record<keyof TableRow<T, DB>, unknown[]>>,
+): FPromise<TaskOutcome<List<TableRow<T, DB>>>> =>
   wrapAsync(async () => {
     try {
       const onConflict = Array.isArray(identity) ? identity.join(",") : identity
@@ -242,19 +257,19 @@ export const upsertEntities = <T extends TableNames>(
 
       const queryWithIs = is
         ? List(Object.entries(is)).foldLeft(queryWithIn)((query, [column, value]) =>
-            query.is(column as keyof TableRow<T> & string, value as boolean | null),
+            query.is(column as keyof TableRow<T, DB> & string, value as boolean | null),
           )
         : queryWithIn
 
       const { data, error } = await queryWithIs.select()
 
       if (error) {
-        return Err<List<TableRow<T>>>(toError(error))
+        return Err<List<TableRow<T, DB>>>(toError(error))
       }
 
-      return Ok(List(data as TableRow<T>[]))
+      return Ok(List(data as TableRow<T, DB>[]))
     } catch (error) {
-      return Err<List<TableRow<T>>>(toError(error))
+      return Err<List<TableRow<T, DB>>>(toError(error))
     }
   })
 
@@ -263,13 +278,14 @@ export const upsertEntities = <T extends TableNames>(
  * This is the new Query-based API that supports OR chaining and functional operations.
  *
  * @template T - The table name
+ * @template DB - The database schema type
  * @param client - The Supabase client instance
  * @param table - The table to query
  * @param where - Initial WHERE conditions to filter by
  * @param is - Initial IS conditions to filter by
  * @param wherein - Initial WHERE IN conditions to filter by
  * @param order - Optional ordering parameters
- * @returns A Query<T> instance that supports chaining and lazy evaluation
+ * @returns A Query<T, DB> instance that supports chaining and lazy evaluation
  *
  * @example
  * // Simple query
@@ -288,13 +304,13 @@ export const upsertEntities = <T extends TableNames>(
  *   .filter(name => name.startsWith('A'))
  *   .many()
  */
-export const query = <T extends TableNames>(
-  client: SupabaseClientType,
+export const query = <T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
+  client: SupabaseClientType<DB>,
   table: T,
-  where: WhereConditions<TableRow<T>> = {},
-  is?: IsConditionsLocal<TableRow<T>>,
-  wherein?: Partial<Record<keyof TableRow<T>, unknown[]>>,
-  order?: [keyof TableRow<T> & string, { ascending?: boolean; nullsFirst?: boolean }],
-): Query<T> => {
-  return createQuery(client, table, where, is, wherein, order)
+  where: WhereConditions<TableRow<T, DB>> = {},
+  is?: IsConditionsLocal<TableRow<T, DB>>,
+  wherein?: Partial<Record<keyof TableRow<T, DB>, unknown[]>>,
+  order?: [keyof TableRow<T, DB> & string, { ascending?: boolean; nullsFirst?: boolean }],
+): Query<T, DB> => {
+  return createQuery<T, DB>(client, table, where, is, wherein, order)
 }
