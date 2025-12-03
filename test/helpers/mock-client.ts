@@ -55,6 +55,9 @@ export function createMockSupabaseClient(mockData?: {
 
   return {
     from: vi.fn().mockImplementation(() => createQueryBuilder()),
+    schema: vi.fn().mockImplementation(() => ({
+      from: vi.fn().mockImplementation(() => createQueryBuilder()),
+    })),
   } as unknown as SupabaseClientType
 }
 

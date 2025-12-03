@@ -76,11 +76,21 @@ export function createGetItemQuery<T extends TableNames<DB>, DB extends Database
   whereConditions: WhereConditions<TableRow<T, DB>>,
   is: TypedRecord<TableRow<T, DB>, null | boolean> | undefined,
   softDeleteMode: SoftDeleteMode,
+  schema?: string,
 ) {
-  return createQuery<T, DB>(client, name, whereConditions, is, undefined, undefined, {
-    mode: softDeleteMode,
-    appliedByDefault: true,
-  })
+  return createQuery<T, DB>(
+    client,
+    name,
+    whereConditions,
+    is,
+    undefined,
+    undefined,
+    {
+      mode: softDeleteMode,
+      appliedByDefault: true,
+    },
+    schema,
+  )
 }
 
 /**
@@ -94,11 +104,21 @@ export function createGetItemsQuery<T extends TableNames<DB>, DB extends Databas
   wherein: TypedRecord<TableRow<T, DB>, unknown[]> | undefined,
   order: GetItemsParams<TableRow<T, DB>>["order"],
   softDeleteMode: SoftDeleteMode,
+  schema?: string,
 ) {
-  return createQuery<T, DB>(client, name, whereConditions, is, wherein, order, {
-    mode: softDeleteMode,
-    appliedByDefault: true,
-  })
+  return createQuery<T, DB>(
+    client,
+    name,
+    whereConditions,
+    is,
+    wherein,
+    order,
+    {
+      mode: softDeleteMode,
+      appliedByDefault: true,
+    },
+    schema,
+  )
 }
 
 // =============================================================================
@@ -112,8 +132,11 @@ export function createAddItemsMutation<T extends TableNames<DB>, DB extends Data
   client: SupabaseClientType<DB>,
   name: T,
   items: TableRow<T, DB>[],
+  schema?: string,
 ): MutationMultiExecution<TableRow<T, DB>> {
-  return MultiMutationQuery(addEntities<T, DB>(client, name, items) as FPromise<TaskOutcome<List<TableRow<T, DB>>>>)
+  return MultiMutationQuery(
+    addEntities<T, DB>(client, name, items, schema) as FPromise<TaskOutcome<List<TableRow<T, DB>>>>,
+  )
 }
 
 /**
@@ -126,9 +149,12 @@ export function createUpdateItemMutation<T extends TableNames<DB>, DB extends Da
   whereConditions: WhereConditions<TableRow<T, DB>>,
   is: IsParams<TableRow<T, DB>>["is"],
   wherein: WhereinParams<TableRow<T, DB>>["wherein"],
+  schema?: string,
 ): MutationSingleExecution<TableRow<T, DB>> {
   return SingleMutationQuery(
-    updateEntity<T, DB>(client, name, item, whereConditions, is, wherein) as FPromise<TaskOutcome<TableRow<T, DB>>>,
+    updateEntity<T, DB>(client, name, item, whereConditions, is, wherein, schema) as FPromise<
+      TaskOutcome<TableRow<T, DB>>
+    >,
   )
 }
 
@@ -142,10 +168,11 @@ export function createUpdateItemsMutation<T extends TableNames<DB>, DB extends D
   where: WhereConditions<TableRow<T, DB>>,
   is: IsParams<TableRow<T, DB>>["is"],
   wherein: WhereinParams<TableRow<T, DB>>["wherein"],
+  schema?: string,
 ): MutationMultiExecution<TableRow<T, DB>> {
   // Use upsertEntities with single-item array - updates all matching rows with same data
   return MultiMutationQuery(
-    upsertEntities<T, DB>(client, name, [data], undefined, where, is, wherein) as FPromise<
+    upsertEntities<T, DB>(client, name, [data], undefined, where, is, wherein, schema) as FPromise<
       TaskOutcome<List<TableRow<T, DB>>>
     >,
   )
@@ -159,9 +186,10 @@ export function createUpsertItemsMutation<T extends TableNames<DB>, DB extends D
   name: T,
   items: TableUpdate<T, DB>[],
   identity: (keyof TableRow<T, DB> & string) | (keyof TableRow<T, DB> & string)[],
+  schema?: string,
 ): MutationMultiExecution<TableRow<T, DB>> {
   return MultiMutationQuery(
-    upsertEntities<T, DB>(client, name, items, identity, undefined, undefined, undefined) as FPromise<
+    upsertEntities<T, DB>(client, name, items, identity, undefined, undefined, undefined, schema) as FPromise<
       TaskOutcome<List<TableRow<T, DB>>>
     >,
   )
@@ -178,10 +206,11 @@ export function makeGetItem<T extends TableNames<DB>, DB extends DatabaseSchema 
   client: SupabaseClientType<DB>,
   name: T,
   softDeleteMode: SoftDeleteMode,
+  schema?: string,
 ) {
   return function getItem({ id, where, is }: GetItemParams<TableRow<T, DB>>) {
     const whereConditions = { ...where, id } as WhereConditions<TableRow<T, DB>>
-    return createGetItemQuery<T, DB>(client, name, whereConditions, is, softDeleteMode)
+    return createGetItemQuery<T, DB>(client, name, whereConditions, is, softDeleteMode, schema)
   }
 }
 
@@ -192,6 +221,7 @@ export function makeGetItems<T extends TableNames<DB>, DB extends DatabaseSchema
   client: SupabaseClientType<DB>,
   name: T,
   softDeleteMode: SoftDeleteMode,
+  schema?: string,
 ) {
   return function getItems({ where, is, wherein, order }: GetItemsParams<TableRow<T, DB>> = {}) {
     return createGetItemsQuery<T, DB>(
@@ -202,6 +232,7 @@ export function makeGetItems<T extends TableNames<DB>, DB extends DatabaseSchema
       wherein,
       order,
       softDeleteMode,
+      schema,
     )
   }
 }
@@ -213,7 +244,7 @@ export function makePartitionedGetItem<
   T extends TableNames<DB>,
   K extends PartitionKey,
   DB extends DatabaseSchema = Database,
->(client: SupabaseClientType<DB>, name: T, partitionField: string, softDeleteMode: SoftDeleteMode) {
+>(client: SupabaseClientType<DB>, name: T, partitionField: string, softDeleteMode: SoftDeleteMode, schema?: string) {
   return function getItem(partitionKey: K, { id, where, is }: GetItemParams<TableRow<T, DB>>) {
     const whereConditions = buildWhereWithPartitionAndId(partitionField, partitionKey, id, where)
     return createGetItemQuery<T, DB>(
@@ -222,6 +253,7 @@ export function makePartitionedGetItem<
       whereConditions as WhereConditions<TableRow<T, DB>>,
       is,
       softDeleteMode,
+      schema,
     )
   }
 }
@@ -233,7 +265,7 @@ export function makePartitionedGetItems<
   T extends TableNames<DB>,
   K extends PartitionKey,
   DB extends DatabaseSchema = Database,
->(client: SupabaseClientType<DB>, name: T, partitionField: string, softDeleteMode: SoftDeleteMode) {
+>(client: SupabaseClientType<DB>, name: T, partitionField: string, softDeleteMode: SoftDeleteMode, schema?: string) {
   return function getItems(partitionKey: K, { where, is, wherein, order }: GetItemsParams<TableRow<T, DB>> = {}) {
     const whereConditions = buildWhereWithPartition(partitionField, partitionKey, where)
     return createGetItemsQuery<T, DB>(
@@ -244,6 +276,7 @@ export function makePartitionedGetItems<
       wherein,
       order,
       softDeleteMode,
+      schema,
     )
   }
 }
@@ -254,9 +287,18 @@ export function makePartitionedGetItems<
 export function makeUpdateItem<T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
   client: SupabaseClientType<DB>,
   name: T,
+  schema?: string,
 ) {
   return function updateItem({ where, data, is, wherein }: UpdateItemParams<T, TableRow<T, DB>, DB>) {
-    return createUpdateItemMutation<T, DB>(client, name, data, where as WhereConditions<TableRow<T, DB>>, is, wherein)
+    return createUpdateItemMutation<T, DB>(
+      client,
+      name,
+      data,
+      where as WhereConditions<TableRow<T, DB>>,
+      is,
+      wherein,
+      schema,
+    )
   }
 }
 
@@ -267,7 +309,7 @@ export function makePartitionedUpdateItem<
   T extends TableNames<DB>,
   K extends PartitionKey,
   DB extends DatabaseSchema = Database,
->(client: SupabaseClientType<DB>, name: T, partitionField: string) {
+>(client: SupabaseClientType<DB>, name: T, partitionField: string, schema?: string) {
   return function updateItem(partitionKey: K, { where, data, is, wherein }: UpdateItemParams<T, TableRow<T, DB>, DB>) {
     const whereConditions = buildWhereWithPartition(partitionField, partitionKey, where)
     return createUpdateItemMutation<T, DB>(
@@ -277,6 +319,7 @@ export function makePartitionedUpdateItem<
       whereConditions as WhereConditions<TableRow<T, DB>>,
       is,
       wherein,
+      schema,
     )
   }
 }
@@ -287,9 +330,18 @@ export function makePartitionedUpdateItem<
 export function makeUpdateItems<T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
   client: SupabaseClientType<DB>,
   name: T,
+  schema?: string,
 ) {
   return function updateItems({ where, data, is, wherein }: UpdateItemsParams<T, TableRow<T, DB>, DB>) {
-    return createUpdateItemsMutation<T, DB>(client, name, data, where as WhereConditions<TableRow<T, DB>>, is, wherein)
+    return createUpdateItemsMutation<T, DB>(
+      client,
+      name,
+      data,
+      where as WhereConditions<TableRow<T, DB>>,
+      is,
+      wherein,
+      schema,
+    )
   }
 }
 
@@ -300,7 +352,7 @@ export function makePartitionedUpdateItems<
   T extends TableNames<DB>,
   K extends PartitionKey,
   DB extends DatabaseSchema = Database,
->(client: SupabaseClientType<DB>, name: T, partitionField: string) {
+>(client: SupabaseClientType<DB>, name: T, partitionField: string, schema?: string) {
   return function updateItems(
     partitionKey: K,
     { where, data, is, wherein }: UpdateItemsParams<T, TableRow<T, DB>, DB>,
@@ -313,6 +365,7 @@ export function makePartitionedUpdateItems<
       whereConditions as WhereConditions<TableRow<T, DB>>,
       is,
       wherein,
+      schema,
     )
   }
 }
@@ -323,9 +376,10 @@ export function makePartitionedUpdateItems<
 export function makeAddItems<T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
   client: SupabaseClientType<DB>,
   name: T,
+  schema?: string,
 ) {
   return function addItems({ items }: { items: TableRow<T, DB>[] }) {
-    return createAddItemsMutation<T, DB>(client, name, items)
+    return createAddItemsMutation<T, DB>(client, name, items, schema)
   }
 }
 
@@ -335,12 +389,13 @@ export function makeAddItems<T extends TableNames<DB>, DB extends DatabaseSchema
 export function makeUpsertItems<T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
   client: SupabaseClientType<DB>,
   name: T,
+  schema?: string,
 ) {
   return function upsertItems({
     items,
     identity = "id" as keyof TableRow<T, DB> & string,
   }: UpsertItemsParams<T, TableRow<T, DB>, DB>) {
-    return createUpsertItemsMutation<T, DB>(client, name, items, identity)
+    return createUpsertItemsMutation<T, DB>(client, name, items, identity, schema)
   }
 }
 
@@ -351,13 +406,13 @@ export function makePartitionedUpsertItems<
   T extends TableNames<DB>,
   K extends PartitionKey,
   DB extends DatabaseSchema = Database,
->(client: SupabaseClientType<DB>, name: T, _partitionField: string) {
+>(client: SupabaseClientType<DB>, name: T, _partitionField: string, schema?: string) {
   return function upsertItems(
     _partitionKey: K,
     { items, identity = "id" as keyof TableRow<T, DB> & string }: UpsertItemsParams<T, TableRow<T, DB>, DB>,
   ) {
     // Note: partitionKey is passed but items should already contain the partition field value
     // This maintains API consistency with other partitioned methods
-    return createUpsertItemsMutation<T, DB>(client, name, items, identity)
+    return createUpsertItemsMutation<T, DB>(client, name, items, identity, schema)
   }
 }

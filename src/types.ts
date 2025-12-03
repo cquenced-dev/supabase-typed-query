@@ -7,24 +7,31 @@
 // =============================================================================
 
 /**
+ * Structure of a single schema within a database.
+ */
+export interface SchemaDefinition {
+  Tables: Record<
+    string,
+    {
+      Row: object
+      Insert: object
+      Update: object
+    }
+  >
+  Views?: Record<string, { Row: object }>
+  Functions?: Record<string, { Args: object; Returns: unknown }>
+  Enums?: Record<string, unknown>
+  CompositeTypes?: Record<string, unknown>
+}
+
+/**
  * Base schema interface that all databases must conform to.
  * Consumer-provided Database types must extend this interface.
+ * Supports multiple schemas (public, custom schemas, etc.)
  */
 export interface DatabaseSchema {
-  public: {
-    Tables: Record<
-      string,
-      {
-        Row: object
-        Insert: object
-        Update: object
-      }
-    >
-    Views?: Record<string, { Row: object }>
-    Functions?: Record<string, { Args: object; Returns: unknown }>
-    Enums?: Record<string, unknown>
-    CompositeTypes?: Record<string, unknown>
-  }
+  public: SchemaDefinition
+  [schemaName: string]: SchemaDefinition
 }
 
 /**
@@ -53,37 +60,61 @@ export interface Database extends DatabaseSchema {
 // =============================================================================
 
 /**
- * Table names for a given database schema.
+ * Schema names for a given database.
  * @typeParam DB - The database schema type (defaults to placeholder Database)
  */
-export type TableNames<DB extends DatabaseSchema = Database> = keyof DB["public"]["Tables"] & string
+export type SchemaNames<DB extends DatabaseSchema = Database> = keyof DB & string
+
+/**
+ * Default schema name constant.
+ */
+export const DEFAULT_SCHEMA = "public" as const
+
+/**
+ * Table names for a given database schema.
+ * @typeParam DB - The database schema type (defaults to placeholder Database)
+ * @typeParam S - The schema name (defaults to "public")
+ */
+export type TableNames<
+  DB extends DatabaseSchema = Database,
+  S extends SchemaNames<DB> = "public",
+> = keyof DB[S]["Tables"] & string
 
 /**
  * Row type for a given table in a database schema.
  * @typeParam T - The table name
  * @typeParam DB - The database schema type (defaults to placeholder Database)
+ * @typeParam S - The schema name (defaults to "public")
  */
-export type TableRow<T extends TableNames<DB>, DB extends DatabaseSchema = Database> = DB["public"]["Tables"][T]["Row"]
+export type TableRow<
+  T extends TableNames<DB, S>,
+  DB extends DatabaseSchema = Database,
+  S extends SchemaNames<DB> = "public",
+> = DB[S]["Tables"][T]["Row"]
 
 /**
  * Insert type for a given table in a database schema.
  * @typeParam T - The table name
  * @typeParam DB - The database schema type (defaults to placeholder Database)
+ * @typeParam S - The schema name (defaults to "public")
  */
 export type TableInsert<
-  T extends TableNames<DB>,
+  T extends TableNames<DB, S>,
   DB extends DatabaseSchema = Database,
-> = DB["public"]["Tables"][T]["Insert"]
+  S extends SchemaNames<DB> = "public",
+> = DB[S]["Tables"][T]["Insert"]
 
 /**
  * Update type for a given table in a database schema.
  * @typeParam T - The table name
  * @typeParam DB - The database schema type (defaults to placeholder Database)
+ * @typeParam S - The schema name (defaults to "public")
  */
 export type TableUpdate<
-  T extends TableNames<DB>,
+  T extends TableNames<DB, S>,
   DB extends DatabaseSchema = Database,
-> = DB["public"]["Tables"][T]["Update"]
+  S extends SchemaNames<DB> = "public",
+> = DB[S]["Tables"][T]["Update"]
 
 // =============================================================================
 // Utility Types
@@ -125,7 +156,25 @@ export interface QueryBuilder extends Promise<{ data: unknown; error: unknown }>
 // =============================================================================
 
 /**
- * Supabase client type - accepts any client with a compatible from() method.
+ * Query builder returned by client.from() or client.schema().from()
+ */
+export interface SupabaseQueryBuilder {
+  select: (columns?: string) => unknown
+  insert: (data: unknown) => unknown
+  update: (data: unknown) => unknown
+  upsert: (data: unknown, options?: { onConflict?: string }) => unknown
+  delete: () => unknown
+}
+
+/**
+ * Schema accessor returned by client.schema()
+ */
+export interface SupabaseSchemaAccessor {
+  from: (table: string) => SupabaseQueryBuilder
+}
+
+/**
+ * Supabase client type - accepts any client with compatible from() and schema() methods.
  * Uses `unknown` return type to allow SupabaseClient<Database> from @supabase/supabase-js
  * to be used directly without type casting.
  *
@@ -133,4 +182,5 @@ export interface QueryBuilder extends Promise<{ data: unknown; error: unknown }>
  */
 export interface SupabaseClientType<DB extends DatabaseSchema = Database> {
   from: (table: TableNames<DB>) => unknown
+  schema: (name: string) => SupabaseSchemaAccessor
 }

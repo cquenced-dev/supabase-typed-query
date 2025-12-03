@@ -69,6 +69,7 @@ export const Entity = <T extends TableNames<DB>, DB extends DatabaseSchema = Dat
   config: EntityConfig,
 ): IEntity<T, DB> => {
   const softDeleteMode = getSoftDeleteMode(config.softDelete)
+  const { schema } = config
 
   return {
     /**
@@ -76,41 +77,41 @@ export const Entity = <T extends TableNames<DB>, DB extends DatabaseSchema = Dat
      * @param params Query parameters including id, where conditions, and is conditions
      * @returns A chainable query that can be executed with .one(), .many(), or .first()
      */
-    getItem: makeGetItem<T, DB>(client, name, softDeleteMode),
+    getItem: makeGetItem<T, DB>(client, name, softDeleteMode, schema),
 
     /**
      * Get a list of items from the table filtered by conditions.
      * @param params Optional query parameters including where, is, wherein, and order
      * @returns A chainable query that can be executed with .one(), .many(), or .first()
      */
-    getItems: makeGetItems<T, DB>(client, name, softDeleteMode),
+    getItems: makeGetItems<T, DB>(client, name, softDeleteMode, schema),
 
     /**
      * Adds multiple items to the table.
      * @param params Parameters including items array
      * @returns A mutation query with OrThrow methods
      */
-    addItems: makeAddItems<T, DB>(client, name),
+    addItems: makeAddItems<T, DB>(client, name, schema),
 
     /**
      * Update a single item in the table.
      * @param params Update parameters including id, item data, and optional filters
      * @returns A mutation query with OrThrow methods
      */
-    updateItem: makeUpdateItem<T, DB>(client, name),
+    updateItem: makeUpdateItem<T, DB>(client, name, schema),
 
     /**
      * Update multiple items in the table.
      * @param params Update parameters including items array, identity, and optional filters
      * @returns A mutation query with OrThrow methods
      */
-    updateItems: makeUpdateItems<T, DB>(client, name),
+    updateItems: makeUpdateItems<T, DB>(client, name, schema),
 
     /**
      * Upsert multiple items with different data per row.
      * @param params Upsert parameters including items array and identity columns
      * @returns A mutation query with OrThrow methods
      */
-    upsertItems: makeUpsertItems<T, DB>(client, name),
+    upsertItems: makeUpsertItems<T, DB>(client, name, schema),
   }
 }

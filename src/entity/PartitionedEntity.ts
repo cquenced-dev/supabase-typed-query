@@ -61,7 +61,7 @@ export const PartitionedEntity = <
   config: PartitionedEntityConfig,
 ): IPartitionedEntity<T, K, DB> => {
   const softDeleteMode = getSoftDeleteMode(config.softDelete)
-  const { partitionField } = config
+  const { partitionField, schema } = config
 
   return {
     /**
@@ -70,7 +70,7 @@ export const PartitionedEntity = <
      * @param params Query parameters including id, where conditions, and is conditions
      * @returns A chainable query that can be executed with .one(), .many(), or .first()
      */
-    getItem: makePartitionedGetItem<T, K, DB>(client, name, partitionField, softDeleteMode),
+    getItem: makePartitionedGetItem<T, K, DB>(client, name, partitionField, softDeleteMode, schema),
 
     /**
      * Get a list of items from the table within a partition.
@@ -78,7 +78,7 @@ export const PartitionedEntity = <
      * @param params Optional query parameters including where, is, wherein, and order
      * @returns A chainable query that can be executed with .one(), .many(), or .first()
      */
-    getItems: makePartitionedGetItems<T, K, DB>(client, name, partitionField, softDeleteMode),
+    getItems: makePartitionedGetItems<T, K, DB>(client, name, partitionField, softDeleteMode, schema),
 
     /**
      * Adds multiple items to the table.
@@ -86,7 +86,7 @@ export const PartitionedEntity = <
      * @param params Parameters including items array
      * @returns A mutation query with OrThrow methods
      */
-    addItems: makeAddItems<T, DB>(client, name),
+    addItems: makeAddItems<T, DB>(client, name, schema),
 
     /**
      * Update a single item in the table within a partition.
@@ -94,7 +94,7 @@ export const PartitionedEntity = <
      * @param params Update parameters including id, item data, and optional filters
      * @returns A mutation query with OrThrow methods
      */
-    updateItem: makePartitionedUpdateItem<T, K, DB>(client, name, partitionField),
+    updateItem: makePartitionedUpdateItem<T, K, DB>(client, name, partitionField, schema),
 
     /**
      * Update multiple items in the table within a partition.
@@ -102,7 +102,7 @@ export const PartitionedEntity = <
      * @param params Update parameters including items array, identity, and optional filters
      * @returns A mutation query with OrThrow methods
      */
-    updateItems: makePartitionedUpdateItems<T, K, DB>(client, name, partitionField),
+    updateItems: makePartitionedUpdateItems<T, K, DB>(client, name, partitionField, schema),
 
     /**
      * Upsert multiple items with different data per row within a partition.
@@ -111,6 +111,6 @@ export const PartitionedEntity = <
      * @param params Upsert parameters including items array and identity columns
      * @returns A mutation query with OrThrow methods
      */
-    upsertItems: makePartitionedUpsertItems<T, K, DB>(client, name, partitionField),
+    upsertItems: makePartitionedUpsertItems<T, K, DB>(client, name, partitionField, schema),
   }
 }

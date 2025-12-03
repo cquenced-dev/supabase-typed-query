@@ -12,6 +12,7 @@ Type-safe query builder and entity pattern for Supabase with TypeScript.
 - 🔄 **Composable queries** - Mix and match conditions, filters, and transformations
 - 🗑️ **Soft delete support** - Built-in soft delete filtering with per-query overrides
 - 🏢 **Multi-tenancy ready** - Automatic partition key filtering for tenant isolation
+- 🗄️ **Custom schema support** - Query tables in any PostgreSQL schema, not just public
 
 ## Installation
 
@@ -150,6 +151,42 @@ const AdminEntity = Entity(supabase, "users", {
 })
 ```
 
+### Custom Schema Support
+
+Query tables in any PostgreSQL schema (not just the default `public` schema):
+
+```typescript
+import { Entity, PartitionedEntity, query } from "supabase-typed-query"
+
+// Entity with custom schema
+const InventoryEntity = Entity(supabase, "items", {
+  softDelete: false,
+  schema: "inventory", // Uses client.schema("inventory").from("items")
+})
+
+const items = await InventoryEntity.getItems({ where: { active: true } }).many()
+
+// PartitionedEntity with custom schema
+const TenantItemsEntity = PartitionedEntity(supabase, "items", {
+  partitionField: "tenant_id",
+  softDelete: true,
+  schema: "tenant_data",
+})
+
+// Query API with custom schema (7th parameter)
+const results = await query(
+  supabase,
+  "items",
+  { active: true },
+  undefined, // is conditions
+  undefined, // wherein conditions
+  undefined, // order
+  "inventory", // schema
+).many()
+```
+
+When no schema is specified, queries use the default `public` schema via `client.from()`. When a schema is specified, queries use `client.schema(name).from(table)`.
+
 ### Multi-Tenancy with Partition Keys
 
 Use partition keys to automatically scope queries to a tenant or partition:
@@ -253,7 +290,13 @@ const posts = await query(supabase, "posts", {
 ### Entity Configuration
 
 - `softDelete: boolean` - (Required) When `true`, automatically excludes soft-deleted items; when `false`, includes them
-- `partitionKey?: Record<string, unknown>` - (Optional) Automatically applies partition filtering (e.g., `{ tenant_id: "123" }` for multi-tenancy)
+- `schema?: string` - (Optional) PostgreSQL schema to query from (defaults to `"public"`)
+
+### PartitionedEntity Configuration
+
+- `partitionField: string` - (Required) Column name used for partition filtering (e.g., `"tenant_id"`)
+- `softDelete: boolean` - (Required) When `true`, automatically excludes soft-deleted items
+- `schema?: string` - (Optional) PostgreSQL schema to query from (defaults to `"public"`)
 
 ## Requirements
 

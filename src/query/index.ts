@@ -55,6 +55,7 @@ const wrapAsync = <T>(fn: () => Promise<TaskOutcome<T>>): FPromise<TaskOutcome<T
  * @param table - The table to query
  * @param where - Conditions to filter by
  * @param is - IS conditions to filter by
+ * @param schema - Database schema to query (defaults to "public")
  * @returns A promise resolving to the entity if found
  */
 export const getEntity = <T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
@@ -62,11 +63,14 @@ export const getEntity = <T extends TableNames<DB>, DB extends DatabaseSchema = 
   table: T,
   where: WhereConditions<TableRow<T, DB>>,
   is?: IsConditionsLocal<TableRow<T, DB>>,
+  schema?: string,
 ): FPromise<TaskOutcome<TableRow<T, DB>>> =>
   wrapAsync(async () => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const baseQuery = (client.from(table) as any).select("*").match(where)
+      const tableQuery = schema ? client.schema(schema).from(table) : client.from(table)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const baseQuery = (tableQuery as any).select("*").match(where)
 
       const queryWithIs = is
         ? List(Object.entries(is)).foldLeft(baseQuery)((query, [column, value]) =>
@@ -96,6 +100,7 @@ export const getEntity = <T extends TableNames<DB>, DB extends DatabaseSchema = 
  * @param is - IS conditions to filter by
  * @param wherein - WHERE IN conditions to filter by
  * @param order - Optional ordering parameters
+ * @param schema - Database schema to query (defaults to "public")
  * @returns A promise resolving to the entities if found
  */
 export const getEntities = <T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
@@ -108,11 +113,14 @@ export const getEntities = <T extends TableNames<DB>, DB extends DatabaseSchema 
     "id" as keyof TableRow<T, DB> & string,
     { ascending: true },
   ],
+  schema?: string,
 ): FPromise<TaskOutcome<List<TableRow<T, DB>>>> =>
   wrapAsync(async () => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const baseQuery = (client.from(table) as any).select("*").match(where)
+      const tableQuery = schema ? client.schema(schema).from(table) : client.from(table)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const baseQuery = (tableQuery as any).select("*").match(where)
 
       const queryWithIn = wherein
         ? List(Object.entries(wherein)).foldLeft(baseQuery)((query, [column, values]) =>
@@ -147,17 +155,21 @@ export const getEntities = <T extends TableNames<DB>, DB extends DatabaseSchema 
  * @param client - The Supabase client instance
  * @param table - The table to insert into
  * @param entities - The entities to add
+ * @param schema - Database schema to query (defaults to "public")
  * @returns A promise resolving to the added entities
  */
 export const addEntities = <T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
   client: SupabaseClientType<DB>,
   table: T,
   entities: TableInsert<T, DB>[],
+  schema?: string,
 ): FPromise<TaskOutcome<List<TableRow<T, DB>>>> =>
   wrapAsync(async () => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (client.from(table) as any).insert(entities as never).select()
+      const tableQuery = schema ? client.schema(schema).from(table) : client.from(table)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (tableQuery as any).insert(entities as never).select()
 
       if (error) {
         return Err<List<TableRow<T, DB>>>(toError(error))
@@ -179,6 +191,7 @@ export const addEntities = <T extends TableNames<DB>, DB extends DatabaseSchema 
  * @param where - Conditions to filter by
  * @param is - IS conditions to filter by
  * @param wherein - WHERE IN conditions to filter by
+ * @param schema - Database schema to query (defaults to "public")
  * @returns A promise resolving to the updated entity
  */
 export const updateEntity = <T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
@@ -188,11 +201,14 @@ export const updateEntity = <T extends TableNames<DB>, DB extends DatabaseSchema
   where: WhereConditions<TableRow<T, DB>>,
   is?: IsConditionsLocal<TableRow<T, DB>>,
   wherein?: Partial<Record<keyof TableRow<T, DB>, unknown[]>>,
+  schema?: string,
 ): FPromise<TaskOutcome<TableRow<T, DB>>> =>
   wrapAsync(async () => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const baseQuery = (client.from(table) as any).update(entities as never).match(where)
+      const tableQuery = schema ? client.schema(schema).from(table) : client.from(table)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const baseQuery = (tableQuery as any).update(entities as never).match(where)
 
       const queryWithIn = wherein
         ? List(Object.entries(wherein)).foldLeft(baseQuery)((query, [column, values]) =>
@@ -230,6 +246,7 @@ export const updateEntity = <T extends TableNames<DB>, DB extends DatabaseSchema
  * @param where - Additional conditions to filter by
  * @param is - IS conditions to filter by
  * @param wherein - WHERE IN conditions to filter by
+ * @param schema - Database schema to query (defaults to "public")
  * @returns A promise resolving to the upserted entities
  */
 export const upsertEntities = <T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
@@ -241,13 +258,16 @@ export const upsertEntities = <T extends TableNames<DB>, DB extends DatabaseSche
   where?: WhereConditions<TableRow<T, DB>>,
   is?: IsConditionsLocal<TableRow<T, DB>>,
   wherein?: Partial<Record<keyof TableRow<T, DB>, unknown[]>>,
+  schema?: string,
 ): FPromise<TaskOutcome<List<TableRow<T, DB>>>> =>
   wrapAsync(async () => {
     try {
       const onConflict = Array.isArray(identity) ? identity.join(",") : identity
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const baseQuery = (client.from(table) as any).upsert(entities as never, { onConflict }).match(where ?? {})
+      const tableQuery = schema ? client.schema(schema).from(table) : client.from(table)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const baseQuery = (tableQuery as any).upsert(entities as never, { onConflict }).match(where ?? {})
 
       const queryWithIn = wherein
         ? List(Object.entries(wherein)).foldLeft(baseQuery)((query, [column, values]) =>
@@ -285,6 +305,7 @@ export const upsertEntities = <T extends TableNames<DB>, DB extends DatabaseSche
  * @param is - Initial IS conditions to filter by
  * @param wherein - Initial WHERE IN conditions to filter by
  * @param order - Optional ordering parameters
+ * @param schema - Database schema to query (defaults to "public")
  * @returns A Query<T, DB> instance that supports chaining and lazy evaluation
  *
  * @example
@@ -303,6 +324,10 @@ export const upsertEntities = <T extends TableNames<DB>, DB extends DatabaseSche
  *   .map(user => user.name)
  *   .filter(name => name.startsWith('A'))
  *   .many()
+ *
+ * @example
+ * // Query with custom schema
+ * const items = await query(client, "items", { active: true }, undefined, undefined, undefined, "inventory").many()
  */
 export const query = <T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
   client: SupabaseClientType<DB>,
@@ -311,6 +336,7 @@ export const query = <T extends TableNames<DB>, DB extends DatabaseSchema = Data
   is?: IsConditionsLocal<TableRow<T, DB>>,
   wherein?: Partial<Record<keyof TableRow<T, DB>, unknown[]>>,
   order?: [keyof TableRow<T, DB> & string, { ascending?: boolean; nullsFirst?: boolean }],
+  schema?: string,
 ): Query<T, DB> => {
-  return createQuery<T, DB>(client, table, where, is, wherein, order)
+  return createQuery<T, DB>(client, table, where, is, wherein, order, undefined, schema)
 }

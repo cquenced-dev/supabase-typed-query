@@ -7,7 +7,7 @@
 ```typescript
 import { query } from "supabase-typed-query"
 
-query<TableName, Database>(client, "table", where?, is?, wherein?, order?)
+query<TableName, Database>(client, "table", where?, is?, wherein?, order?, schema?)
 ```
 
 ### Query Methods
@@ -71,7 +71,10 @@ query<TableName, Database>(client, "table", where?, is?, wherein?, order?)
 ```typescript
 import { Entity } from "supabase-typed-query"
 
-const MyEntity = Entity<"table", Database>(client, "table", { softDelete: boolean })
+const MyEntity = Entity<"table", Database>(client, "table", {
+  softDelete: boolean,
+  schema?: string, // Optional: defaults to "public"
+})
 ```
 
 | Method                               | Returns                      | Description           |
@@ -91,6 +94,7 @@ import { PartitionedEntity } from "supabase-typed-query"
 const MyEntity = PartitionedEntity<"table", KeyType, Database>(client, "table", {
   partitionField: "tenant_id",
   softDelete: boolean,
+  schema?: string, // Optional: defaults to "public"
 })
 ```
 
@@ -128,13 +132,30 @@ MyEntity.updateItem(partitionKey, { where, data })
 ## Type Utilities
 
 ```typescript
-import type { TableNames, TableRow, TableInsert, TableUpdate, DatabaseSchema } from "supabase-typed-query"
+import type {
+  TableNames,
+  TableRow,
+  TableInsert,
+  TableUpdate,
+  DatabaseSchema,
+  SchemaNames,
+  DEFAULT_SCHEMA,
+} from "supabase-typed-query"
 
-// Get all table names
+// Get all schema names
+type Schemas = SchemaNames<Database>
+
+// Get all table names (defaults to public schema)
 type Tables = TableNames<Database>
 
-// Get row type for a table
+// Get table names from a specific schema
+type InventoryTables = TableNames<Database, "inventory">
+
+// Get row type for a table (defaults to public schema)
 type UserRow = TableRow<"users", Database>
+
+// Get row type from a custom schema
+type ItemRow = TableRow<"items", Database, "inventory">
 
 // Get insert type for a table
 type UserInsert = TableInsert<"users", Database>

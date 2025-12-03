@@ -261,4 +261,6 @@ export interface QueryBuilderConfig<T extends TableNames<DB>, DB extends Databas
   offset?: number
   softDeleteMode?: SoftDeleteMode
   softDeleteAppliedByDefault?: boolean
+  /** Database schema to query (defaults to "public") */
+  schema?: string
 }

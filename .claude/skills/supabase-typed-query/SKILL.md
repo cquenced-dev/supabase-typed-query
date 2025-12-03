@@ -231,6 +231,59 @@ try {
 }
 ```
 
+## Custom Schema Support
+
+PostgreSQL supports multiple schemas beyond the default `public` schema. Both Entity and Query APIs support querying from custom schemas.
+
+### Entity with Custom Schema
+
+```typescript
+// Query from a custom schema (e.g., "inventory" schema)
+const InventoryEntity = Entity<"items", Database>(client, "items", {
+  softDelete: false,
+  schema: "inventory", // Uses client.schema("inventory").from("items")
+})
+
+// All queries will target the "inventory" schema
+const items = await InventoryEntity.getItems({ where: { active: true } }).manyOrThrow()
+```
+
+### PartitionedEntity with Custom Schema
+
+```typescript
+// Multi-tenant data in a custom schema
+const TenantItemsEntity = PartitionedEntity<"items", string, Database>(client, "items", {
+  partitionField: "tenant_id",
+  softDelete: true,
+  schema: "tenant_data", // Custom schema
+})
+
+// Queries target the custom schema with partition filter
+const items = await TenantItemsEntity.getItems(tenantId).manyOrThrow()
+```
+
+### Query API with Custom Schema
+
+```typescript
+import { query } from "supabase-typed-query"
+
+// Use the 7th parameter for schema
+const results = await query<"items", Database>(
+  client,
+  "items",
+  { active: true },
+  undefined, // is conditions
+  undefined, // wherein conditions
+  undefined, // order
+  "inventory", // schema
+).manyOrThrow()
+```
+
+### Default Behavior
+
+- If no schema is specified, queries use the default `public` schema (via `client.from()`)
+- When a schema is specified, queries use `client.schema(name).from(table)`
+
 ## Soft Delete
 
 ### Configuration

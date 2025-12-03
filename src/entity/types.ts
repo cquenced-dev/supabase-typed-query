@@ -37,6 +37,8 @@ export type TypedRecord<T, V> = Partial<Record<keyof T, V>>
 export type EntityConfig = {
   /** Soft delete filtering. true = exclude deleted items, false = include deleted items */
   softDelete: boolean
+  /** Database schema to query (defaults to "public") */
+  schema?: string
 }
 
 /**
@@ -47,6 +49,8 @@ export type PartitionedEntityConfig = {
   partitionField: string
   /** Soft delete filtering. true = exclude deleted items, false = include deleted items */
   softDelete: boolean
+  /** Database schema to query (defaults to "public") */
+  schema?: string
 }
 
 // =============================================================================

@@ -36,10 +36,10 @@ export const QueryBuilder = <T extends TableNames<DB>, DB extends DatabaseSchema
    * Build the Supabase query from accumulated conditions
    */
   const buildSupabaseQuery = () => {
-    const { table, conditions, order, limit, offset } = config
+    const { table, conditions, order, limit, offset, schema } = config
 
-    // Start with base query (just the table reference)
-    const baseQuery = client.from(table)
+    // Start with base query - use schema if provided, otherwise default to public
+    const baseQuery = schema ? client.schema(schema).from(table) : client.from(table)
 
     // Handle multiple conditions with OR logic
     const queryWithConditions =
@@ -718,6 +718,7 @@ export const createQuery = <T extends TableNames<DB>, DB extends DatabaseSchema 
   wherein?: Partial<Record<keyof TableRow<T, DB>, unknown[]>>,
   order?: [keyof TableRow<T, DB> & string, { ascending?: boolean; nullsFirst?: boolean }],
   softDeleteConfig?: { mode?: "include" | "exclude" | "only"; appliedByDefault?: boolean },
+  schema?: string,
 ): Query<T, DB> => {
   const config: QueryBuilderConfig<T, DB> = {
     table,
@@ -725,6 +726,7 @@ export const createQuery = <T extends TableNames<DB>, DB extends DatabaseSchema 
     order,
     softDeleteMode: softDeleteConfig?.mode,
     softDeleteAppliedByDefault: softDeleteConfig?.appliedByDefault,
+    schema,
   }
   return QueryBuilder<T, DB>(client, config)
 }
