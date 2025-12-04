@@ -120,16 +120,18 @@ export const Entity = <T extends TableNames<DB>, DB extends DatabaseSchema = Dat
 
     /**
      * Delete a single item from the table.
+     * When softDelete is true, sets the deleted timestamp instead of hard deleting.
      * @param params Delete parameters including where conditions
      * @returns A mutation query with OrThrow methods, returns deleted row
      */
-    deleteItem: makeDeleteItem<T, DB>(client, name, schema),
+    deleteItem: makeDeleteItem<T, DB>(client, name, config.softDelete, schema),
 
     /**
      * Delete multiple items from the table.
+     * When softDelete is true, sets the deleted timestamp instead of hard deleting.
      * @param params Delete parameters including where conditions
      * @returns A mutation query with OrThrow methods, returns deleted rows
      */
-    deleteItems: makeDeleteItems<T, DB>(client, name, schema),
+    deleteItems: makeDeleteItems<T, DB>(client, name, config.softDelete, schema),
   }
 }

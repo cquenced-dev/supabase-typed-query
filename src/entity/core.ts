@@ -2,7 +2,15 @@
  * Shared internal functions for Entity and PartitionedEntity (DRY)
  */
 
-import { addEntities, deleteEntities, deleteEntity, updateEntity, upsertEntities } from "@/query"
+import {
+  addEntities,
+  deleteEntities,
+  deleteEntity,
+  softDeleteEntities,
+  softDeleteEntity,
+  updateEntity,
+  upsertEntities,
+} from "@/query"
 import type { WhereConditions } from "@/query/Query"
 import { createQuery } from "@/query/QueryBuilder"
 import type { Database, DatabaseSchema, SupabaseClientType, TableNames, TableRow, TableUpdate } from "@/types"
@@ -424,7 +432,7 @@ export function makePartitionedUpsertItems<
 // =============================================================================
 
 /**
- * Creates a deleteItem mutation
+ * Creates a deleteItem mutation - supports both soft and hard delete
  */
 export function createDeleteItemMutation<T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
   client: SupabaseClientType<DB>,
@@ -432,15 +440,17 @@ export function createDeleteItemMutation<T extends TableNames<DB>, DB extends Da
   whereConditions: WhereConditions<TableRow<T, DB>>,
   is: IsParams<TableRow<T, DB>>["is"],
   wherein: WhereinParams<TableRow<T, DB>>["wherein"],
+  softDelete: boolean,
   schema?: string,
 ): MutationSingleExecution<TableRow<T, DB>> {
-  return SingleMutationQuery(
-    deleteEntity<T, DB>(client, name, whereConditions, is, wherein, schema) as FPromise<TaskOutcome<TableRow<T, DB>>>,
-  )
+  const operation = softDelete
+    ? softDeleteEntity<T, DB>(client, name, whereConditions, is, wherein, schema)
+    : deleteEntity<T, DB>(client, name, whereConditions, is, wherein, schema)
+  return SingleMutationQuery(operation as FPromise<TaskOutcome<TableRow<T, DB>>>)
 }
 
 /**
- * Creates a deleteItems mutation
+ * Creates a deleteItems mutation - supports both soft and hard delete
  */
 export function createDeleteItemsMutation<T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
   client: SupabaseClientType<DB>,
@@ -448,13 +458,13 @@ export function createDeleteItemsMutation<T extends TableNames<DB>, DB extends D
   whereConditions: WhereConditions<TableRow<T, DB>>,
   is: IsParams<TableRow<T, DB>>["is"],
   wherein: WhereinParams<TableRow<T, DB>>["wherein"],
+  softDelete: boolean,
   schema?: string,
 ): MutationMultiExecution<TableRow<T, DB>> {
-  return MultiMutationQuery(
-    deleteEntities<T, DB>(client, name, whereConditions, is, wherein, schema) as FPromise<
-      TaskOutcome<List<TableRow<T, DB>>>
-    >,
-  )
+  const operation = softDelete
+    ? softDeleteEntities<T, DB>(client, name, whereConditions, is, wherein, schema)
+    : deleteEntities<T, DB>(client, name, whereConditions, is, wherein, schema)
+  return MultiMutationQuery(operation as FPromise<TaskOutcome<List<TableRow<T, DB>>>>)
 }
 
 // =============================================================================
@@ -463,23 +473,35 @@ export function createDeleteItemsMutation<T extends TableNames<DB>, DB extends D
 
 /**
  * Creates deleteItem method for Entity (no partition)
+ * When softDelete is true, sets the deleted timestamp instead of hard deleting.
  */
 export function makeDeleteItem<T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
   client: SupabaseClientType<DB>,
   name: T,
+  softDelete: boolean,
   schema?: string,
 ) {
   return function deleteItem({ where, is, wherein }: DeleteItemParams<TableRow<T, DB>>) {
-    return createDeleteItemMutation<T, DB>(client, name, where as WhereConditions<TableRow<T, DB>>, is, wherein, schema)
+    return createDeleteItemMutation<T, DB>(
+      client,
+      name,
+      where as WhereConditions<TableRow<T, DB>>,
+      is,
+      wherein,
+      softDelete,
+      schema,
+    )
   }
 }
 
 /**
  * Creates deleteItems method for Entity (no partition)
+ * When softDelete is true, sets the deleted timestamp instead of hard deleting.
  */
 export function makeDeleteItems<T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
   client: SupabaseClientType<DB>,
   name: T,
+  softDelete: boolean,
   schema?: string,
 ) {
   return function deleteItems({ where, is, wherein }: DeleteItemsParams<TableRow<T, DB>>) {
@@ -489,6 +511,7 @@ export function makeDeleteItems<T extends TableNames<DB>, DB extends DatabaseSch
       where as WhereConditions<TableRow<T, DB>>,
       is,
       wherein,
+      softDelete,
       schema,
     )
   }
@@ -496,12 +519,13 @@ export function makeDeleteItems<T extends TableNames<DB>, DB extends DatabaseSch
 
 /**
  * Creates deleteItem method for PartitionedEntity
+ * When softDelete is true, sets the deleted timestamp instead of hard deleting.
  */
 export function makePartitionedDeleteItem<
   T extends TableNames<DB>,
   K extends PartitionKey,
   DB extends DatabaseSchema = Database,
->(client: SupabaseClientType<DB>, name: T, partitionField: string, schema?: string) {
+>(client: SupabaseClientType<DB>, name: T, partitionField: string, softDelete: boolean, schema?: string) {
   return function deleteItem(partitionKey: K, { where, is, wherein }: DeleteItemParams<TableRow<T, DB>>) {
     const whereConditions = buildWhereWithPartition(partitionField, partitionKey, where)
     return createDeleteItemMutation<T, DB>(
@@ -510,6 +534,7 @@ export function makePartitionedDeleteItem<
       whereConditions as WhereConditions<TableRow<T, DB>>,
       is,
       wherein,
+      softDelete,
       schema,
     )
   }
@@ -517,12 +542,13 @@ export function makePartitionedDeleteItem<
 
 /**
  * Creates deleteItems method for PartitionedEntity
+ * When softDelete is true, sets the deleted timestamp instead of hard deleting.
  */
 export function makePartitionedDeleteItems<
   T extends TableNames<DB>,
   K extends PartitionKey,
   DB extends DatabaseSchema = Database,
->(client: SupabaseClientType<DB>, name: T, partitionField: string, schema?: string) {
+>(client: SupabaseClientType<DB>, name: T, partitionField: string, softDelete: boolean, schema?: string) {
   return function deleteItems(partitionKey: K, { where, is, wherein }: DeleteItemsParams<TableRow<T, DB>>) {
     const whereConditions = buildWhereWithPartition(partitionField, partitionKey, where)
     return createDeleteItemsMutation<T, DB>(
@@ -531,6 +557,7 @@ export function makePartitionedDeleteItems<
       whereConditions as WhereConditions<TableRow<T, DB>>,
       is,
       wherein,
+      softDelete,
       schema,
     )
   }

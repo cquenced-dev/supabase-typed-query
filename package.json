@@ -1,6 +1,6 @@
 {
   "name": "supabase-typed-query",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Type-safe query builder and entity pattern for Supabase with TypeScript",
   "type": "module",
   "main": "./dist/index.js",
@@ -71,13 +71,13 @@
     "functype": ">=0.20.1"
   },
   "devDependencies": {
-    "@supabase/supabase-js": "^2.86.0",
+    "@supabase/supabase-js": "^2.86.2",
     "@types/node": "^22.19.1",
     "dotenv": "^17.2.3",
     "eslint-plugin-functional": "^9.0.2",
     "functype": "^0.20.2",
     "globals": "^16.5.0",
-    "ts-builds": "^1.0.0",
+    "ts-builds": "^1.1.0",
     "vite": "^7.2.6",
     "vite-plugin-dts": "^4.5.4"
   },

@@ -177,7 +177,19 @@ const upserted = await PostEntity.upsertItems({
   items: [{ id: "123", title: "Updated Title" }],
   identity: "id",
 }).executeOrThrow()
+
+// Delete single item (soft delete when softDelete: true)
+const deleted = await PostEntity.deleteItem({
+  where: { id: "123" },
+}).executeOrThrow()
+
+// Delete multiple items
+const deletedMany = await PostEntity.deleteItems({
+  where: { status: "archived" },
+}).executeOrThrow()
 ```
+
+**Note:** When `softDelete: true`, delete methods set the `deleted` timestamp instead of physically removing rows. When `softDelete: false`, rows are permanently removed.
 
 ### PartitionedEntity (Multi-Tenancy)
 
@@ -288,13 +300,18 @@ const results = await query<"items", Database>(
 
 ### Configuration
 
+The `softDelete` configuration affects both queries AND delete operations:
+
 ```typescript
-// Entity with soft deletes (filters by default)
+// Entity with soft deletes enabled
 const UserEntity = Entity<"users", Database>(client, "users", { softDelete: true })
-// Queries automatically: WHERE deleted IS NULL
+// - Queries automatically filter: WHERE deleted IS NULL
+// - deleteItem/deleteItems set deleted timestamp (soft delete)
 
 // Entity without soft deletes
 const AllUsersEntity = Entity<"users", Database>(client, "users", { softDelete: false })
+// - Queries include all records (no automatic filtering)
+// - deleteItem/deleteItems permanently remove rows (hard delete)
 ```
 
 ### Per-Query Override

@@ -77,14 +77,18 @@ const MyEntity = Entity<"table", Database>(client, "table", {
 })
 ```
 
-| Method                               | Returns                      | Description           |
-| ------------------------------------ | ---------------------------- | --------------------- |
-| `.getItem({ id, ... })`              | `Query<T>`                   | Get single by ID      |
-| `.getItems({ ... })`                 | `Query<T>`                   | Get multiple items    |
-| `.addItems({ items })`               | `MutationMultiExecution<T>`  | Insert items          |
-| `.updateItem({ where, data })`       | `MutationSingleExecution<T>` | Update single item    |
-| `.updateItems({ where, data })`      | `MutationMultiExecution<T>`  | Update multiple items |
-| `.upsertItems({ items, identity? })` | `MutationMultiExecution<T>`  | Upsert items          |
+| Method                               | Returns                      | Description                         |
+| ------------------------------------ | ---------------------------- | ----------------------------------- |
+| `.getItem({ id, ... })`              | `Query<T>`                   | Get single by ID                    |
+| `.getItems({ ... })`                 | `Query<T>`                   | Get multiple items                  |
+| `.addItems({ items })`               | `MutationMultiExecution<T>`  | Insert items                        |
+| `.updateItem({ where, data })`       | `MutationSingleExecution<T>` | Update single item                  |
+| `.updateItems({ where, data })`      | `MutationMultiExecution<T>`  | Update multiple items               |
+| `.upsertItems({ items, identity? })` | `MutationMultiExecution<T>`  | Upsert items                        |
+| `.deleteItem({ where })`             | `MutationSingleExecution<T>` | Delete single item (soft/hard)\*    |
+| `.deleteItems({ where })`            | `MutationMultiExecution<T>`  | Delete multiple items (soft/hard)\* |
+
+\* When `softDelete: true`, delete methods set the `deleted` timestamp instead of removing rows.
 
 ### PartitionedEntity
 
@@ -104,7 +108,8 @@ All methods take partition key as first argument:
 MyEntity.getItem(partitionKey, { id, ... })
 MyEntity.getItems(partitionKey, { ... })
 MyEntity.updateItem(partitionKey, { where, data })
-// etc.
+MyEntity.deleteItem(partitionKey, { where })  // soft/hard based on config
+MyEntity.deleteItems(partitionKey, { where }) // soft/hard based on config
 ```
 
 ### Parameter Types
@@ -124,6 +129,9 @@ MyEntity.updateItem(partitionKey, { where, data })
 
 // UpsertItemsParams
 { items: TableUpdate[], identity?: string | string[] }
+
+// DeleteItemParams / DeleteItemsParams
+{ where: WhereConditions, is?: IsConditions, wherein?: WhereinConditions }
 
 // OrderParams
 [columnName, { ascending?: boolean, nullsFirst?: boolean }]
