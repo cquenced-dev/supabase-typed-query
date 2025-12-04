@@ -22,6 +22,8 @@ import type { Database, DatabaseSchema, SupabaseClientType, TableNames } from "@
 import {
   getSoftDeleteMode,
   makeAddItems,
+  makeDeleteItem,
+  makeDeleteItems,
   makeGetItem,
   makeGetItems,
   makeUpdateItem,
@@ -33,6 +35,8 @@ import type { EntityConfig, IEntity } from "./types"
 // Re-export types for backwards compatibility
 export type {
   AddItemsParams,
+  DeleteItemParams,
+  DeleteItemsParams,
   EntityConfig,
   EntityType,
   GetItemParams,
@@ -113,5 +117,19 @@ export const Entity = <T extends TableNames<DB>, DB extends DatabaseSchema = Dat
      * @returns A mutation query with OrThrow methods
      */
     upsertItems: makeUpsertItems<T, DB>(client, name, schema),
+
+    /**
+     * Delete a single item from the table.
+     * @param params Delete parameters including where conditions
+     * @returns A mutation query with OrThrow methods, returns deleted row
+     */
+    deleteItem: makeDeleteItem<T, DB>(client, name, schema),
+
+    /**
+     * Delete multiple items from the table.
+     * @param params Delete parameters including where conditions
+     * @returns A mutation query with OrThrow methods, returns deleted rows
+     */
+    deleteItems: makeDeleteItems<T, DB>(client, name, schema),
   }
 }

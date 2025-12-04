@@ -2,7 +2,7 @@
  * Shared internal functions for Entity and PartitionedEntity (DRY)
  */
 
-import { addEntities, updateEntity, upsertEntities } from "@/query"
+import { addEntities, deleteEntities, deleteEntity, updateEntity, upsertEntities } from "@/query"
 import type { WhereConditions } from "@/query/Query"
 import { createQuery } from "@/query/QueryBuilder"
 import type { Database, DatabaseSchema, SupabaseClientType, TableNames, TableRow, TableUpdate } from "@/types"
@@ -10,6 +10,8 @@ import type { Database, DatabaseSchema, SupabaseClientType, TableNames, TableRow
 import type { FPromise, List, TaskOutcome } from "functype"
 
 import type {
+  DeleteItemParams,
+  DeleteItemsParams,
   GetItemParams,
   GetItemsParams,
   IsParams,
@@ -414,5 +416,122 @@ export function makePartitionedUpsertItems<
     // Note: partitionKey is passed but items should already contain the partition field value
     // This maintains API consistency with other partitioned methods
     return createUpsertItemsMutation<T, DB>(client, name, items, identity, schema)
+  }
+}
+
+// =============================================================================
+// Delete Mutation Functions
+// =============================================================================
+
+/**
+ * Creates a deleteItem mutation
+ */
+export function createDeleteItemMutation<T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
+  client: SupabaseClientType<DB>,
+  name: T,
+  whereConditions: WhereConditions<TableRow<T, DB>>,
+  is: IsParams<TableRow<T, DB>>["is"],
+  wherein: WhereinParams<TableRow<T, DB>>["wherein"],
+  schema?: string,
+): MutationSingleExecution<TableRow<T, DB>> {
+  return SingleMutationQuery(
+    deleteEntity<T, DB>(client, name, whereConditions, is, wherein, schema) as FPromise<TaskOutcome<TableRow<T, DB>>>,
+  )
+}
+
+/**
+ * Creates a deleteItems mutation
+ */
+export function createDeleteItemsMutation<T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
+  client: SupabaseClientType<DB>,
+  name: T,
+  whereConditions: WhereConditions<TableRow<T, DB>>,
+  is: IsParams<TableRow<T, DB>>["is"],
+  wherein: WhereinParams<TableRow<T, DB>>["wherein"],
+  schema?: string,
+): MutationMultiExecution<TableRow<T, DB>> {
+  return MultiMutationQuery(
+    deleteEntities<T, DB>(client, name, whereConditions, is, wherein, schema) as FPromise<
+      TaskOutcome<List<TableRow<T, DB>>>
+    >,
+  )
+}
+
+// =============================================================================
+// Delete Method Factories
+// =============================================================================
+
+/**
+ * Creates deleteItem method for Entity (no partition)
+ */
+export function makeDeleteItem<T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
+  client: SupabaseClientType<DB>,
+  name: T,
+  schema?: string,
+) {
+  return function deleteItem({ where, is, wherein }: DeleteItemParams<TableRow<T, DB>>) {
+    return createDeleteItemMutation<T, DB>(client, name, where as WhereConditions<TableRow<T, DB>>, is, wherein, schema)
+  }
+}
+
+/**
+ * Creates deleteItems method for Entity (no partition)
+ */
+export function makeDeleteItems<T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
+  client: SupabaseClientType<DB>,
+  name: T,
+  schema?: string,
+) {
+  return function deleteItems({ where, is, wherein }: DeleteItemsParams<TableRow<T, DB>>) {
+    return createDeleteItemsMutation<T, DB>(
+      client,
+      name,
+      where as WhereConditions<TableRow<T, DB>>,
+      is,
+      wherein,
+      schema,
+    )
+  }
+}
+
+/**
+ * Creates deleteItem method for PartitionedEntity
+ */
+export function makePartitionedDeleteItem<
+  T extends TableNames<DB>,
+  K extends PartitionKey,
+  DB extends DatabaseSchema = Database,
+>(client: SupabaseClientType<DB>, name: T, partitionField: string, schema?: string) {
+  return function deleteItem(partitionKey: K, { where, is, wherein }: DeleteItemParams<TableRow<T, DB>>) {
+    const whereConditions = buildWhereWithPartition(partitionField, partitionKey, where)
+    return createDeleteItemMutation<T, DB>(
+      client,
+      name,
+      whereConditions as WhereConditions<TableRow<T, DB>>,
+      is,
+      wherein,
+      schema,
+    )
+  }
+}
+
+/**
+ * Creates deleteItems method for PartitionedEntity
+ */
+export function makePartitionedDeleteItems<
+  T extends TableNames<DB>,
+  K extends PartitionKey,
+  DB extends DatabaseSchema = Database,
+>(client: SupabaseClientType<DB>, name: T, partitionField: string, schema?: string) {
+  return function deleteItems(partitionKey: K, { where, is, wherein }: DeleteItemsParams<TableRow<T, DB>>) {
+    const whereConditions = buildWhereWithPartition(partitionField, partitionKey, where)
+    return createDeleteItemsMutation<T, DB>(
+      client,
+      name,
+      whereConditions as WhereConditions<TableRow<T, DB>>,
+      is,
+      wherein,
+      schema,
+    )
   }
 }

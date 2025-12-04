@@ -136,6 +136,24 @@ export type UpsertItemsParams<
   identity?: (keyof Row & string) | (keyof Row & string)[]
 }
 
+/**
+ * Delete params for single item: { where }
+ */
+export type DeleteItemParams<Row extends object = EmptyObject> = {
+  /** Conditions to match the item to delete */
+  where: WhereConditions<Row>
+} & IsParams<Row> &
+  WhereinParams<Row>
+
+/**
+ * Delete params for multiple items: { where }
+ */
+export type DeleteItemsParams<Row extends object = EmptyObject> = {
+  /** Conditions to match items to delete */
+  where: WhereConditions<Row>
+} & IsParams<Row> &
+  WhereinParams<Row>
+
 // =============================================================================
 // Mutation Query Wrappers
 // =============================================================================
@@ -203,6 +221,8 @@ export type IEntity<T extends TableNames<DB>, DB extends DatabaseSchema = Databa
   updateItem(params: UpdateItemParams<T, TableRow<T, DB>, DB>): MutationSingleExecution<TableRow<T, DB>>
   updateItems(params: UpdateItemsParams<T, TableRow<T, DB>, DB>): MutationMultiExecution<TableRow<T, DB>>
   upsertItems(params: UpsertItemsParams<T, TableRow<T, DB>, DB>): MutationMultiExecution<TableRow<T, DB>>
+  deleteItem(params: DeleteItemParams<TableRow<T, DB>>): MutationSingleExecution<TableRow<T, DB>>
+  deleteItems(params: DeleteItemsParams<TableRow<T, DB>>): MutationMultiExecution<TableRow<T, DB>>
 }
 
 /**
@@ -228,6 +248,8 @@ export type IPartitionedEntity<
     partitionKey: K,
     params: UpsertItemsParams<T, TableRow<T, DB>, DB>,
   ): MutationMultiExecution<TableRow<T, DB>>
+  deleteItem(partitionKey: K, params: DeleteItemParams<TableRow<T, DB>>): MutationSingleExecution<TableRow<T, DB>>
+  deleteItems(partitionKey: K, params: DeleteItemsParams<TableRow<T, DB>>): MutationMultiExecution<TableRow<T, DB>>
 }
 
 /**

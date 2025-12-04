@@ -294,6 +294,108 @@ export const upsertEntities = <T extends TableNames<DB>, DB extends DatabaseSche
   })
 
 /**
+ * Deletes a single entity from the specified table.
+ * @template T - The table name
+ * @template DB - The database schema type
+ * @param client - The Supabase client instance
+ * @param table - The table to delete from
+ * @param where - Conditions to filter by
+ * @param is - IS conditions to filter by
+ * @param wherein - WHERE IN conditions to filter by
+ * @param schema - Database schema to query (defaults to "public")
+ * @returns A promise resolving to the deleted entity
+ */
+export const deleteEntity = <T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
+  client: SupabaseClientType<DB>,
+  table: T,
+  where: WhereConditions<TableRow<T, DB>>,
+  is?: IsConditionsLocal<TableRow<T, DB>>,
+  wherein?: Partial<Record<keyof TableRow<T, DB>, unknown[]>>,
+  schema?: string,
+): FPromise<TaskOutcome<TableRow<T, DB>>> =>
+  wrapAsync(async () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const tableQuery = schema ? client.schema(schema).from(table) : client.from(table)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const baseQuery = (tableQuery as any).delete().match(where)
+
+      const queryWithIn = wherein
+        ? List(Object.entries(wherein)).foldLeft(baseQuery)((query, [column, values]) =>
+            query.in(column, values as never),
+          )
+        : baseQuery
+
+      const queryWithIs = is
+        ? List(Object.entries(is)).foldLeft(queryWithIn)((query, [column, value]) =>
+            query.is(column as keyof TableRow<T, DB> & string, value as boolean | null),
+          )
+        : queryWithIn
+
+      const { data, error } = await queryWithIs.select().single()
+
+      if (error) {
+        return Err<TableRow<T, DB>>(toError(error))
+      }
+
+      return Ok(data as TableRow<T, DB>)
+    } catch (error) {
+      return Err<TableRow<T, DB>>(toError(error))
+    }
+  })
+
+/**
+ * Deletes multiple entities from the specified table.
+ * @template T - The table name
+ * @template DB - The database schema type
+ * @param client - The Supabase client instance
+ * @param table - The table to delete from
+ * @param where - Conditions to filter by
+ * @param is - IS conditions to filter by
+ * @param wherein - WHERE IN conditions to filter by
+ * @param schema - Database schema to query (defaults to "public")
+ * @returns A promise resolving to the deleted entities
+ */
+export const deleteEntities = <T extends TableNames<DB>, DB extends DatabaseSchema = Database>(
+  client: SupabaseClientType<DB>,
+  table: T,
+  where: WhereConditions<TableRow<T, DB>>,
+  is?: IsConditionsLocal<TableRow<T, DB>>,
+  wherein?: Partial<Record<keyof TableRow<T, DB>, unknown[]>>,
+  schema?: string,
+): FPromise<TaskOutcome<List<TableRow<T, DB>>>> =>
+  wrapAsync(async () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const tableQuery = schema ? client.schema(schema).from(table) : client.from(table)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const baseQuery = (tableQuery as any).delete().match(where)
+
+      const queryWithIn = wherein
+        ? List(Object.entries(wherein)).foldLeft(baseQuery)((query, [column, values]) =>
+            query.in(column, values as never),
+          )
+        : baseQuery
+
+      const queryWithIs = is
+        ? List(Object.entries(is)).foldLeft(queryWithIn)((query, [column, value]) =>
+            query.is(column as keyof TableRow<T, DB> & string, value as boolean | null),
+          )
+        : queryWithIn
+
+      const { data, error } = await queryWithIs.select()
+
+      if (error) {
+        return Err<List<TableRow<T, DB>>>(toError(error))
+      }
+
+      return Ok(List(data as TableRow<T, DB>[]))
+    } catch (error) {
+      return Err<List<TableRow<T, DB>>>(toError(error))
+    }
+  })
+
+/**
  * Creates a new Query for the specified table with initial conditions.
  * This is the new Query-based API that supports OR chaining and functional operations.
  *

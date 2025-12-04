@@ -31,6 +31,8 @@ import type { Database, DatabaseSchema, SupabaseClientType, TableNames } from "@
 import {
   getSoftDeleteMode,
   makeAddItems,
+  makePartitionedDeleteItem,
+  makePartitionedDeleteItems,
   makePartitionedGetItem,
   makePartitionedGetItems,
   makePartitionedUpdateItem,
@@ -112,5 +114,21 @@ export const PartitionedEntity = <
      * @returns A mutation query with OrThrow methods
      */
     upsertItems: makePartitionedUpsertItems<T, K, DB>(client, name, partitionField, schema),
+
+    /**
+     * Delete a single item from the table within a partition.
+     * @param partitionKey The partition key value (e.g., tenantId)
+     * @param params Delete parameters including where conditions
+     * @returns A mutation query with OrThrow methods, returns deleted row
+     */
+    deleteItem: makePartitionedDeleteItem<T, K, DB>(client, name, partitionField, schema),
+
+    /**
+     * Delete multiple items from the table within a partition.
+     * @param partitionKey The partition key value (e.g., tenantId)
+     * @param params Delete parameters including where conditions
+     * @returns A mutation query with OrThrow methods, returns deleted rows
+     */
+    deleteItems: makePartitionedDeleteItems<T, K, DB>(client, name, partitionField, schema),
   }
 }
