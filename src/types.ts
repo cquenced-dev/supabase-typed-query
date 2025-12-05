@@ -29,15 +29,24 @@ export interface SchemaDefinition {
  * Consumer-provided Database types must extend this interface.
  * Supports multiple schemas (public, custom schemas, etc.)
  *
- * Note: Supabase adds `__InternalSupabase` to database types for internal metadata.
- * We accept it here with `any` to allow compatibility, then exclude it from SchemaNames.
+ * Note: Uses permissive index signature to accept Supabase's __InternalSupabase metadata.
+ * Use CleanDatabase<DB> or Omit<DB, '__InternalSupabase'> when strict typing is needed.
  */
 export interface DatabaseSchema {
   public: SchemaDefinition
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  __InternalSupabase?: any
   [schemaName: string]: SchemaDefinition
 }
+
+/**
+ * Helper type to strip `__InternalSupabase` from Supabase-generated database types.
+ * Following Supabase's own pattern from SupabaseClient.
+ *
+ * @example
+ * ```typescript
+ * type Schemas = keyof TypedDatabase<Database>  // "public" | "inventory" (excludes __InternalSupabase)
+ * ```
+ */
+export type TypedDatabase<DB> = Omit<DB, "__InternalSupabase">
 
 /**
  * Default Database type - used as fallback when no specific database type is provided.
@@ -66,9 +75,10 @@ export interface Database extends DatabaseSchema {
 
 /**
  * Schema names for a given database.
+ * Uses Omit pattern (same as Supabase's SupabaseClient) to exclude __InternalSupabase.
  * @typeParam DB - The database schema type (defaults to placeholder Database)
  */
-export type SchemaNames<DB extends DatabaseSchema = Database> = Exclude<keyof DB & string, "__InternalSupabase">
+export type SchemaNames<DB extends DatabaseSchema = Database> = keyof TypedDatabase<DB> & string
 
 /**
  * Default schema name constant.
