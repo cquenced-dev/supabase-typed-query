@@ -24,6 +24,15 @@ pnpm add supabase-typed-query functype
 yarn add supabase-typed-query functype
 ```
 
+### Compatibility
+
+| Dependency              | Version    | Notes                               |
+| ----------------------- | ---------- | ----------------------------------- |
+| `@supabase/supabase-js` | `^2.0.0`   | Tested with 2.86.x                  |
+| `functype`              | `>=0.20.1` | Required for error handling         |
+| TypeScript              | `>=5.0`    | Recommended for best type inference |
+| Node.js                 | `>=18`     | Required                            |
+
 ## Quick Start
 
 ### 1. Set up your database types

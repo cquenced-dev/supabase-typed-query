@@ -70,6 +70,14 @@
     "@supabase/supabase-js": "^2.0.0",
     "functype": ">=0.20.1"
   },
+  "peerDependenciesMeta": {
+    "@supabase/supabase-js": {
+      "optional": false
+    },
+    "functype": {
+      "optional": false
+    }
+  },
   "devDependencies": {
     "@supabase/supabase-js": "^2.86.2",
     "@types/node": "^22.19.1",

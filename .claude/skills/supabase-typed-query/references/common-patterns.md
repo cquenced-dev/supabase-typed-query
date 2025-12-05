@@ -213,16 +213,36 @@ const allPosts = await PostEntity.getItems({}).includeDeleted().manyOrThrow()
 const deletedPosts = await PostEntity.getItems({}).onlyDeleted().manyOrThrow()
 ```
 
-### Soft Delete Implementation
+### Soft Delete with deleteItem/deleteItems
 
 ```typescript
-// "Delete" by setting deleted timestamp
-await PostEntity.updateItem({
-  where: { id: postId },
-  data: { deleted: new Date().toISOString() },
-}).executeOrThrow()
+// When softDelete: true, deleteItem sets the deleted timestamp automatically
+const PostEntity = Entity<"posts", Database>(client, "posts", { softDelete: true })
 
-// "Restore" by clearing deleted timestamp
+// Soft delete a single item (sets deleted = timestamp)
+await PostEntity.deleteItem({ where: { id: postId } }).executeOrThrow()
+
+// Soft delete multiple items
+await PostEntity.deleteItems({ where: { status: "archived" } }).executeOrThrow()
+```
+
+### Hard Delete (Physical Removal)
+
+```typescript
+// When softDelete: false, deleteItem physically removes the row
+const LogEntity = Entity<"logs", Database>(client, "logs", { softDelete: false })
+
+// Permanently delete a single item
+await LogEntity.deleteItem({ where: { id: logId } }).executeOrThrow()
+
+// Permanently delete multiple items
+await LogEntity.deleteItems({ where: { created_at: { lt: cutoffDate } } }).executeOrThrow()
+```
+
+### Restore Soft-Deleted Items
+
+```typescript
+// To restore, manually clear the deleted timestamp
 await PostEntity.updateItem({
   where: { id: postId },
   data: { deleted: null },

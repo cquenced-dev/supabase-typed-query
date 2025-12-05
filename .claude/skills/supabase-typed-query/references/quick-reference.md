@@ -147,10 +147,12 @@ import type {
   TableUpdate,
   DatabaseSchema,
   SchemaNames,
+  TypedDatabase,
+  ValidSchema,
   DEFAULT_SCHEMA,
 } from "supabase-typed-query"
 
-// Get all schema names
+// Get all schema names (excludes __InternalSupabase automatically)
 type Schemas = SchemaNames<Database>
 
 // Get all table names (defaults to public schema)
@@ -170,6 +172,12 @@ type UserInsert = TableInsert<"users", Database>
 
 // Get update type for a table
 type UserUpdate = TableUpdate<"users", Database>
+
+// Strip __InternalSupabase from Database type (optional - SchemaNames handles this automatically)
+type CleanDB = TypedDatabase<Database>
+
+// Type-safe schema access (returns never for invalid schemas)
+type PublicSchema = ValidSchema<Database, "public">
 ```
 
 ## Re-exported from functype
