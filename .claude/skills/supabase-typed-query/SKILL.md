@@ -135,6 +135,95 @@ const results = await query<"posts", Database>(client, "posts", {
 }).manyOrThrow()
 ```
 
+## RPC (Stored Procedures)
+
+The `rpc()` function provides type-safe invocation of PostgreSQL functions/stored procedures.
+
+### Basic RPC Call
+
+```typescript
+import { rpc } from "supabase-typed-query"
+
+// Call a function that returns a single value
+const stats = await rpc<"get_user_stats", Database>(client, "get_user_stats", {
+  user_id: "123",
+}).oneOrThrow()
+
+// Call a function that returns multiple rows
+const results = await rpc<"search_products", Database>(client, "search_products", {
+  query: "laptop",
+  limit: 10,
+}).manyOrThrow()
+```
+
+### RPC Execution Methods
+
+| Method           | Returns                  | Description                   |
+| ---------------- | ------------------------ | ----------------------------- |
+| `.one()`         | `TaskOutcome<Option<T>>` | Expects single result or none |
+| `.many()`        | `TaskOutcome<List<T>>`   | Expects 0+ results as a list  |
+| `.oneOrThrow()`  | `Promise<T>`             | Throws if not found or error  |
+| `.manyOrThrow()` | `Promise<List<T>>`       | Throws on error               |
+
+### RPC with Options
+
+```typescript
+// With count option for pagination info
+const results = await rpc<"search_items", Database>(
+  client,
+  "search_items",
+  { query: "test" },
+  { count: "exact" },
+).manyOrThrow()
+```
+
+### Type Safety
+
+RPC return types are inferred from your database schema. Your Database type should include Functions definitions:
+
+```typescript
+interface Database {
+  public: {
+    Tables: {
+      /* ... */
+    }
+    Functions: {
+      get_user_stats: {
+        Args: { user_id: string }
+        Returns: { total: number; active: number }
+      }
+      search_products: {
+        Args: { query: string; limit?: number }
+        Returns: { id: string; name: string; price: number }[]
+      }
+    }
+  }
+}
+```
+
+### Error Handling with RPC
+
+```typescript
+// Using TaskOutcome
+const result = await rpc<"risky_function", Database>(client, "risky_function", {}).one()
+
+if (result.isOk()) {
+  const maybeData = result.orThrow()
+  if (maybeData.isSome()) {
+    console.log("Data:", maybeData.orElse(null))
+  }
+} else {
+  console.error("RPC failed:", result.error)
+}
+
+// Using OrThrow
+try {
+  const data = await rpc<"risky_function", Database>(client, "risky_function", {}).oneOrThrow()
+} catch (error) {
+  console.error("Error:", error)
+}
+```
+
 ## Entity API
 
 The Entity API provides consistent CRUD patterns.

@@ -375,3 +375,101 @@ const published = await query<"posts", Database>(client, "posts", {
   published_at: { is: false }, // IS NOT NULL
 }).manyOrThrow()
 ```
+
+## RPC (Stored Procedures) Patterns
+
+### Basic RPC Call
+
+```typescript
+import { rpc } from "supabase-typed-query"
+
+// Call a function that returns aggregate data
+const stats = await rpc<"get_user_stats", Database>(client, "get_user_stats", {
+  user_id: userId,
+}).oneOrThrow()
+
+// Call a function that returns multiple rows
+const searchResults = await rpc<"search_products", Database>(client, "search_products", {
+  query: searchTerm,
+  limit: 20,
+}).manyOrThrow()
+```
+
+### RPC with Safe Error Handling
+
+```typescript
+// Using TaskOutcome for explicit error handling
+const result = await rpc<"calculate_totals", Database>(client, "calculate_totals", {
+  order_id: orderId,
+}).one()
+
+if (result.isOk()) {
+  const maybeTotal = result.orThrow()
+  if (maybeTotal.isSome()) {
+    console.log("Total:", maybeTotal.orElse(null))
+  } else {
+    console.log("No result returned")
+  }
+} else {
+  console.error("RPC failed:", result.error)
+}
+```
+
+### RPC for Bulk Operations
+
+```typescript
+// Functions that perform bulk operations
+const migratedCount = await rpc<"migrate_old_records", Database>(client, "migrate_old_records", {
+  before_date: cutoffDate,
+  batch_size: 1000,
+}).oneOrThrow()
+
+console.log(`Migrated ${migratedCount} records`)
+```
+
+### RPC with No Arguments
+
+```typescript
+// Functions that take no arguments
+const serverTime = await rpc<"get_server_time", Database>(client, "get_server_time").oneOrThrow()
+
+const metrics = await rpc<"get_system_metrics", Database>(client, "get_system_metrics").manyOrThrow()
+```
+
+### RPC in Service Layer
+
+```typescript
+import { Either, Left, Right } from "functype"
+
+async function getUserDashboardData(userId: string): Promise<Either<string, DashboardData>> {
+  try {
+    const stats = await rpc<"get_user_dashboard", Database>(client, "get_user_dashboard", {
+      user_id: userId,
+    }).oneOrThrow()
+
+    return Right(stats)
+  } catch (error) {
+    if (error instanceof SupabaseError) {
+      return Left(`Database error: ${error.message}`)
+    }
+    return Left("Failed to load dashboard")
+  }
+}
+```
+
+### Combining RPC with Queries
+
+```typescript
+// Get aggregate data via RPC, then query for details
+const summary = await rpc<"get_order_summary", Database>(client, "get_order_summary", {
+  customer_id: customerId,
+}).oneOrThrow()
+
+// Use summary data to query related records
+const recentOrders = await query<"orders", Database>(client, "orders", {
+  customer_id: customerId,
+  status: { in: ["pending", "processing"] },
+})
+  .limit(summary.pending_count)
+  .manyOrThrow()
+```

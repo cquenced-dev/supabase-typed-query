@@ -150,6 +150,54 @@ export type TableUpdate<
 > = ValidSchema<DB, S>["Tables"][T]["Update"]
 
 // =============================================================================
+// RPC / Function Types
+// =============================================================================
+
+/**
+ * Function names for a given database schema.
+ * Extracts the keys from the Functions record in the schema definition.
+ * @typeParam DB - The database schema type (defaults to placeholder Database)
+ * @typeParam S - The schema name (defaults to "public")
+ */
+export type FunctionNames<
+  DB extends DatabaseSchema = Database,
+  S extends SchemaNames<DB> = "public" & SchemaNames<DB>,
+> =
+  ValidSchema<DB, S>["Functions"] extends Record<string, unknown>
+    ? keyof ValidSchema<DB, S>["Functions"] & string
+    : never
+
+/**
+ * Argument type for a given function in a database schema.
+ * @typeParam F - The function name
+ * @typeParam DB - The database schema type (defaults to placeholder Database)
+ * @typeParam S - The schema name (defaults to "public")
+ */
+export type FunctionArgs<
+  F extends FunctionNames<DB, S>,
+  DB extends DatabaseSchema = Database,
+  S extends SchemaNames<DB> = "public" & SchemaNames<DB>,
+> =
+  ValidSchema<DB, S>["Functions"] extends Record<string, { Args: unknown; Returns: unknown }>
+    ? ValidSchema<DB, S>["Functions"][F]["Args"]
+    : never
+
+/**
+ * Return type for a given function in a database schema.
+ * @typeParam F - The function name
+ * @typeParam DB - The database schema type (defaults to placeholder Database)
+ * @typeParam S - The schema name (defaults to "public")
+ */
+export type FunctionReturns<
+  F extends FunctionNames<DB, S>,
+  DB extends DatabaseSchema = Database,
+  S extends SchemaNames<DB> = "public" & SchemaNames<DB>,
+> =
+  ValidSchema<DB, S>["Functions"] extends Record<string, { Args: unknown; Returns: unknown }>
+    ? ValidSchema<DB, S>["Functions"][F]["Returns"]
+    : never
+
+// =============================================================================
 // Utility Types
 // =============================================================================
 
@@ -207,7 +255,17 @@ export interface SupabaseSchemaAccessor {
 }
 
 /**
- * Supabase client type - accepts any client with compatible from() and schema() methods.
+ * RPC query builder returned by client.rpc()
+ */
+export interface RpcQueryBuilder extends Promise<{ data: unknown; error: unknown }> {
+  select: (columns?: string) => RpcQueryBuilder
+  single: () => RpcQueryBuilder
+  limit: (count: number) => RpcQueryBuilder
+  order: (column: string, options?: { ascending?: boolean }) => RpcQueryBuilder
+}
+
+/**
+ * Supabase client type - accepts any client with compatible from(), schema(), and rpc() methods.
  * Uses `unknown` return type to allow SupabaseClient<Database> from @supabase/supabase-js
  * to be used directly without type casting.
  *
@@ -217,4 +275,6 @@ export interface SupabaseClientType<DB extends DatabaseSchema = Database> {
   from: (table: TableNames<DB>) => unknown
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   schema: (name: any) => SupabaseSchemaAccessor
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rpc: (fn: string, args?: Record<string, any>, options?: { count?: "exact" | "planned" | "estimated" }) => unknown
 }

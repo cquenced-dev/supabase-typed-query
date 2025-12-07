@@ -39,6 +39,10 @@ export type {
 // Re-export type guards
 export { isMappedQuery, isQuery } from "./Query"
 
+// Re-export RPC types and function
+export type { RpcExecution, RpcMultiExecution, RpcOptions, RpcSingleExecution } from "./rpc"
+export { rpc } from "./rpc"
+
 // Local type for IS conditions
 type IsConditionsLocal<T extends object = EmptyObject> = Partial<Record<keyof T, null | boolean>>
 

@@ -64,6 +64,67 @@ query<TableName, Database>(client, "table", where?, is?, wherein?, order?, schem
 { deleted_at: { is: null } }
 ```
 
+## RPC API
+
+### Calling Stored Procedures
+
+```typescript
+import { rpc } from "supabase-typed-query"
+
+rpc<FunctionName, Database>(client, "function_name", args?, options?)
+```
+
+### RPC Methods
+
+| Method           | Returns                            | Description                   |
+| ---------------- | ---------------------------------- | ----------------------------- |
+| `.one()`         | `FPromise<TaskOutcome<Option<T>>>` | Expects single result or none |
+| `.many()`        | `FPromise<TaskOutcome<List<T>>>`   | Expects 0+ results as list    |
+| `.oneOrThrow()`  | `Promise<T>`                       | Throws if not found or error  |
+| `.manyOrThrow()` | `Promise<List<T>>`                 | Throws on error               |
+
+### RPC Options
+
+```typescript
+{
+  schema?: string           // Database schema (defaults to "public")
+  count?: "exact" | "planned" | "estimated"  // Row count option
+}
+```
+
+### RPC Examples
+
+```typescript
+// Single result
+const stats = await rpc<"get_user_stats", Database>(client, "get_user_stats", {
+  user_id: "123",
+}).oneOrThrow()
+
+// Multiple results
+const products = await rpc<"search_products", Database>(client, "search_products", {
+  query: "laptop",
+  limit: 10,
+}).manyOrThrow()
+
+// No arguments
+const count = await rpc<"get_total_count", Database>(client, "get_total_count").oneOrThrow()
+```
+
+### RPC Types
+
+```typescript
+import type { FunctionNames, FunctionArgs, FunctionReturns, RpcExecution, RpcOptions } from "supabase-typed-query"
+
+// Get all function names from schema
+type Functions = FunctionNames<Database>
+
+// Get function argument type
+type Args = FunctionArgs<"get_user_stats", Database>
+
+// Get function return type
+type Returns = FunctionReturns<"get_user_stats", Database>
+```
+
 ## Entity API
 
 ### Standard Entity

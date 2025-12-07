@@ -53,11 +53,28 @@ export function createMockSupabaseClient(mockData?: {
     return builder
   }
 
+  // Create a mock RPC builder (similar to query builder but for function calls)
+  const createRpcBuilder = (response = defaultResponse) => {
+    const builder = {
+      select: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue(response),
+      limit: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      then: vi.fn().mockImplementation((resolve) => {
+        return Promise.resolve(response).then(resolve)
+      }),
+    }
+
+    Object.setPrototypeOf(builder, Promise.prototype)
+    return builder
+  }
+
   return {
     from: vi.fn().mockImplementation(() => createQueryBuilder()),
     schema: vi.fn().mockImplementation(() => ({
       from: vi.fn().mockImplementation(() => createQueryBuilder()),
     })),
+    rpc: vi.fn().mockImplementation(() => createRpcBuilder()),
   } as unknown as SupabaseClientType
 }
 
